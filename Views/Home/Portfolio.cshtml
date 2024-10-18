@@ -1,0 +1,52 @@
+﻿@{
+    ViewData["Title"] = "Portfolio";
+}
+
+<div id="container"></div>
+
+<!-- Include Three.js from CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<!-- Include OrbitControls from the CDN -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<!-- Link to your custom Three.js script -->
+<script src="~/js/portfolio.js"></script>
+
+<div id="projectModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="projectTitle"></h2>
+        <p id="projectDescription"></p>
+    </div>
+</div>
+
+<!-- Include CSS for the modal -->
+<style>
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+        background-color: white;
+        margin: 15% auto;
+        padding: 20px;
+        width: 50%;
+        border-radius: 10px;
+    }
+
+    .close {
+        color: red;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+</style>
