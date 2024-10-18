@@ -198,14 +198,14 @@ function createPedestals() {
     pedestalTouched.push(false);  // Not touched initially
 
     const pedestal2 = new THREE.Mesh(pedestalGeometry, pedestalMaterial);
-    pedestal2.position.set(4, 0.5, -15);
+    pedestal2.position.set(10, 0.5, -15);
     scene.add(pedestal2);
     pedestals.push(pedestal2);
     pedestalBoxes.push(new THREE.Box3().setFromObject(pedestal2));
     pedestalTouched.push(false);  // Not touched initially
 
     const pedestal3 = new THREE.Mesh(pedestalGeometry, pedestalMaterial);
-    pedestal3.position.set(-4, 0.5, -25);
+    pedestal3.position.set(20, 0.5, -25);
     scene.add(pedestal3);
     pedestals.push(pedestal3);
     pedestalBoxes.push(new THREE.Box3().setFromObject(pedestal3));
