@@ -26,7 +26,7 @@ function init() {
     camera.lookAt(0, 0, 0);  // Camera looks at the center of the scene
 
     // Set up the renderer
-    renderer = new THREE.WebGLRenderer();
+    renderer = new THREE.WebGLRenderer({ antialias: true }); // Enable antialiasing for smoother edges
     renderer.setSize(window.innerWidth, window.innerHeight);  // Fullscreen rendering
     document.body.appendChild(renderer.domElement);  // Add renderer to the DOM
 
@@ -181,6 +181,7 @@ function updateMovement() {
     camera.position.z = character.position.z + 10;
     camera.lookAt(character.position);
 }
+
 let pedestals = [];
 let pedestalBoxes = [];  // For collision detection with the character
 let pedestalTouched = [];  // To track if the pedestal has already triggered
@@ -198,14 +199,14 @@ function createPedestals() {
     pedestalTouched.push(false);  // Not touched initially
 
     const pedestal2 = new THREE.Mesh(pedestalGeometry, pedestalMaterial);
-    pedestal2.position.set(10, 0.5, -15);
+    pedestal2.position.set(4, 0.5, -15);
     scene.add(pedestal2);
     pedestals.push(pedestal2);
     pedestalBoxes.push(new THREE.Box3().setFromObject(pedestal2));
     pedestalTouched.push(false);  // Not touched initially
 
     const pedestal3 = new THREE.Mesh(pedestalGeometry, pedestalMaterial);
-    pedestal3.position.set(20, 0.5, -25);
+    pedestal3.position.set(-4, 0.5, -25);
     scene.add(pedestal3);
     pedestals.push(pedestal3);
     pedestalBoxes.push(new THREE.Box3().setFromObject(pedestal3));
@@ -265,17 +266,17 @@ function createTextMeshes(font, project, pedestal) {
     // Create 3D text for the project title
     const textGeometry = new THREE.TextGeometry(project.title, {
         font: font,
-        size: 0.5,  // Adjust size to fit
-        height: 0.05,  // Thickness of the text
-        curveSegments: 12,
+        size: 15,  // Increase size for better legibility
+        height: 0.1,  // Increase thickness of the text
+        curveSegments: 24,  // Increase segments for smoother curves
     });
 
-    const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });  // Black text for contrast
+    const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });  // Phong material for better shading and legibility
     const textMesh = new THREE.Mesh(textGeometry, textMaterial);
 
     // Position the text on the ground in front of the pedestal
     textMesh.position.set(pedestal.position.x, 0.1, pedestal.position.z - 1);
-    textMesh.rotation.x = -Math.PI / 2;  // Lay flat on the ground
+    textMesh.rotation.set(0, Math.PI / 4, 0);  // Lay flat on the ground
 
     // Add the text to the scene
     scene.add(textMesh);
@@ -283,16 +284,16 @@ function createTextMeshes(font, project, pedestal) {
     // Create 3D text for the project description
     const descriptionGeometry = new THREE.TextGeometry(project.description, {
         font: font,
-        size: 0.3,  // Smaller size for description
-        height: 0.05,
-        curveSegments: 12,
+        size: 0.5,  // Larger size for better legibility
+        height: 0.1,
+        curveSegments: 24,
     });
 
     const descriptionMesh = new THREE.Mesh(descriptionGeometry, textMaterial);
 
     // Position the description below the title
     descriptionMesh.position.set(pedestal.position.x, 0.1, pedestal.position.z - 2);
-    descriptionMesh.rotation.x = -Math.PI / 2;  // Lay flat on the ground
+    descriptionMesh.rotation.set(0, Math.PI / 4, 0);  // Lay flat on the ground
 
     // Add the description to the scene
     scene.add(descriptionMesh);
@@ -310,6 +311,7 @@ function createInteractiveLink() {
     linkRectangle.position.set(0, 0.1, 12);  // Position it on the ground
     linkRectangle.rotation.x = -Math.PI / 2;  // Ensure it's lying flat on the ground
     scene.add(linkRectangle);
+
     // Create bounding box for the rectangle to detect interaction
     const linkBox = new THREE.Box3().setFromObject(linkRectangle);
     linkRectangles.push({ linkBox, url: 'https://example.com' });  // Add URL for the project
