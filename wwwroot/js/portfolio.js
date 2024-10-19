@@ -192,27 +192,26 @@ function createPedestals() {
 
     // Example: Add three pedestals
     const pedestal1 = new THREE.Mesh(pedestalGeometry, pedestalMaterial);
-    pedestal1.position.set(0, 0.5, -5);
+    pedestal1.position.set(0, 0.5, 0);
     scene.add(pedestal1);
     pedestals.push(pedestal1);
     pedestalBoxes.push(new THREE.Box3().setFromObject(pedestal1));  // Initialize bounding box
     pedestalTouched.push(false);  // Not touched initially
 
     const pedestal2 = new THREE.Mesh(pedestalGeometry, pedestalMaterial);
-    pedestal2.position.set(4, 0.5, -15);
+    pedestal2.position.set(8, 0.5, 0);
     scene.add(pedestal2);
     pedestals.push(pedestal2);
     pedestalBoxes.push(new THREE.Box3().setFromObject(pedestal2));
     pedestalTouched.push(false);  // Not touched initially
 
     const pedestal3 = new THREE.Mesh(pedestalGeometry, pedestalMaterial);
-    pedestal3.position.set(-4, 0.5, -25);
+    pedestal3.position.set(16, 0.5, 0);
     scene.add(pedestal3);
     pedestals.push(pedestal3);
     pedestalBoxes.push(new THREE.Box3().setFromObject(pedestal3));
     pedestalTouched.push(false);  // Not touched initially
 }
-
 function checkProximityToPedestals() {
     characterBox.setFromObject(character);  // Update character's bounding box
 
@@ -234,7 +233,7 @@ function checkProximityToPedestals() {
 // Fetch and Display Project Information
 function showProjectDetails(pedestalIndex, pedestal) {
     const projects = [
-        { title: 'Project 1', description: 'This is the first project.' },
+        { title: 'Project 1', description: 'This is the first project about burgers.' },
         { title: 'Project 2', description: 'This is the second project.' },
         { title: 'Project 3', description: 'This is the third project.' },
     ];
@@ -266,8 +265,8 @@ function createTextMeshes(font, project, pedestal) {
     // Create 3D text for the project title
     const textGeometry = new THREE.TextGeometry(project.title, {
         font: font,
-        size: 15,  // Increase size for better legibility
-        height: 0.1,  // Increase thickness of the text
+        size: 0.4,  // Increase size for better legibility
+        height: 0.01,  // Increase thickness of the text
         curveSegments: 24,  // Increase segments for smoother curves
     });
 
@@ -275,7 +274,7 @@ function createTextMeshes(font, project, pedestal) {
     const textMesh = new THREE.Mesh(textGeometry, textMaterial);
 
     // Position the text on the ground in front of the pedestal
-    textMesh.position.set(pedestal.position.x, 0.1, pedestal.position.z - 1);
+    textMesh.position.set(pedestal.position.x + 0.7, 0.1, pedestal.position.z + 2);
     textMesh.rotation.set(0, Math.PI / 4, 0);  // Lay flat on the ground
 
     // Add the text to the scene
@@ -284,15 +283,15 @@ function createTextMeshes(font, project, pedestal) {
     // Create 3D text for the project description
     const descriptionGeometry = new THREE.TextGeometry(project.description, {
         font: font,
-        size: 0.5,  // Larger size for better legibility
-        height: 0.1,
+        size: 0.3,  // Larger size for better legibility
+        height: 0.01,
         curveSegments: 24,
     });
 
     const descriptionMesh = new THREE.Mesh(descriptionGeometry, textMaterial);
 
     // Position the description below the title
-    descriptionMesh.position.set(pedestal.position.x, 0.1, pedestal.position.z - 2);
+    descriptionMesh.position.set(pedestal.position.x, 0.1, pedestal.position.z + 4);
     descriptionMesh.rotation.set(0, Math.PI / 4, 0);  // Lay flat on the ground
 
     // Add the description to the scene
