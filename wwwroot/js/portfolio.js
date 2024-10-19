@@ -47,7 +47,8 @@ function init() {
     // Ensure pedestals are created
     createPedestals();
 
-    createInteractiveLink();
+    // Call the function to create link rectangles for each pedestal
+    createInteractiveLinkBoxes();
 
     // Handle window resize
     window.addEventListener('resize', onWindowResize, false);
@@ -303,17 +304,61 @@ function createTextMeshes(font, project, pedestal) {
 }
 
 let linkRectangles = [];
-function createInteractiveLink() {
-    const linkGeometry = new THREE.PlaneGeometry(3, 1);  // Rectangle size
+// Function to create link rectangles next to each pedestal
+// Function to create link rectangles next to each pedestal
+function createInteractiveLinkBoxes() {
+    const linkGeometry = new THREE.PlaneGeometry(3, 1.5);  // Rectangle size
     const linkMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide });  // Green rectangle for visibility
-    const linkRectangle = new THREE.Mesh(linkGeometry, linkMaterial);
-    linkRectangle.position.set(0, 0.1, 12);  // Position it on the ground
-    linkRectangle.rotation.x = -Math.PI / 2;  // Ensure it's lying flat on the ground
-    scene.add(linkRectangle);
 
-    // Create bounding box for the rectangle to detect interaction
-    const linkBox = new THREE.Box3().setFromObject(linkRectangle);
-    linkRectangles.push({ linkBox, url: 'https://example.com' });  // Add URL for the project
+    const loader = new THREE.FontLoader();
+    loader.load(
+        'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+        function (font) {
+            for (let i = 0; i < pedestals.length; i++) {
+                const pedestal = pedestals[i];
+
+                // Create link rectangle to the left of the pedestal
+                const linkRectangle = new THREE.Mesh(linkGeometry, linkMaterial);
+                linkRectangle.position.set(pedestal.position.x + 1.5, 0.1, pedestal.position.z -2);  // Position it to the left of the pedestal
+                linkRectangle.rotation.x = -Math.PI / 2;  // Ensure it's lying flat on the ground
+                linkRectangle.rotation.y = 0;
+                linkRectangle.rotation.z = 3.9;
+                scene.add(linkRectangle);
+
+                // Create bounding box for the rectangle to detect interaction
+                const linkBox = new THREE.Box3().setFromObject(linkRectangle);
+                linkRectangles.push({ linkBox, url: `https://example.com/project${i + 1}` });  // Add URL for the project
+
+                // Create 3D text for "Press Enter to View Project" with word wrapping
+                const text = 'Press Enter to View Project';
+                const maxCharsPerLine = 15;
+                const lines = [];
+                for (let j = 0; j < text.length; j += maxCharsPerLine) {
+                    lines.push(text.slice(j, j + maxCharsPerLine));
+                }
+                const wrappedText = lines.join('\n');
+
+                const textGeometry = new THREE.TextGeometry(wrappedText, {
+                    font: font,
+                    size: 0.28,
+                    height: 0.01,
+                    curveSegments: 12,
+                });
+                const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+
+                // Position the text above the link rectangle
+                textMesh.position.set(linkRectangle.position.x - 0.9, 0.2, linkRectangle.position.z + 1);
+                textMesh.rotation.x = -Math.PI / 2;  // Lay flat on the ground
+                textMesh.rotation.z = 0.75;
+                scene.add(textMesh);
+            }
+        },
+        undefined,
+        function (error) {
+            console.error('An error occurred while loading the font:', error);
+        }
+    );
 }
 
 let linkInteractionActive = false;  // Track if the character is in a link zone
