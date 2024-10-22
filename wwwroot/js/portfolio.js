@@ -120,6 +120,7 @@ function onKeyDown(event) {
         case 'ArrowDown': case 's': moveBackward = true; break;
         case 'ArrowLeft': case 'a': moveLeft = true; break;
         case 'ArrowRight': case 'd': moveRight = true; break;
+        case 'Enter': handleInteraction(); break;
     }
 }
 
@@ -210,7 +211,29 @@ function createPedestals(projects) {
         pedestals.push(pedestal);
         pedestalBoxes.push(new THREE.Box3().setFromObject(pedestal));  // Initialize bounding box
         pedestalTouched.push(false);  // Not touched initially
+
+        // Create interaction box next to the pedestal
+        const interactionBoxGeometry = new THREE.BoxGeometry(1, 0.1, 1);
+        const interactionBoxMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000, opacity: 0.5, transparent: true });
+        const interactionBox = new THREE.Mesh(interactionBoxGeometry, interactionBoxMaterial);
+        interactionBox.position.set(pedestal.position.x + 1.5, 0.05, pedestal.position.z);
+        interactionBox.userData = { url: project.url };
+        scene.add(interactionBox);
+        pedestalBoxes.push(new THREE.Box3().setFromObject(interactionBox));
+        pedestals.push(interactionBox);
     });
+}
+
+function handleInteraction() {
+    characterBox.setFromObject(character);  // Update character's bounding box
+    for (let i = 0; i < pedestalBoxes.length; i++) {
+        if (characterBox.intersectsBox(pedestalBoxes[i])) {
+            const object = pedestals[i];
+            if (object.userData && object.userData.url) {
+                window.open(object.userData.url, '_blank');  // Open the project link in a new tab
+            }
+        }
+    }
 }
 
 function checkProximityToPedestals() {
@@ -298,7 +321,49 @@ function createTextMeshes(font, project, pedestal) {
 
     // Add the description to the scene
     scene.add(descriptionMesh);
+
+    // Create a clickable box (hitbox) for interaction
+    const linkGeometry = new THREE.PlaneGeometry(3, 1); // Adjust the size for appropriate clickable area
+    const linkMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0, transparent: true }); // Invisible plane
+    const linkMesh = new THREE.Mesh(linkGeometry, linkMaterial);
+
+    // Position the clickable box just above the project text
+    linkMesh.position.set(pedestal.position.x + 0.7, 0.2, pedestal.position.z + 2);
+    linkMesh.rotation.set(-Math.PI / 2, 0, Math.PI / 4); // Match with the text position
+
+    // Store the project URL for linking purposes
+    linkMesh.userData = { url: project.url };
+    scene.add(linkMesh);
+
+    // Add to clickable objects array
+    clickableObjects.push(linkMesh);
 }
+
+const clickableObjects = []; // Store clickable objects for raycasting
+
+// Raycast to detect clicks on link boxes
+document.addEventListener('mousedown', onDocumentMouseDown, false);
+
+function onDocumentMouseDown(event) {
+    // Calculate mouse position in normalized device coordinates
+    const mouse = new THREE.Vector2(
+        (event.clientX / window.innerWidth) * 2 - 1,
+        -(event.clientY / window.innerHeight) * 2 + 1
+    );
+
+    raycaster.setFromCamera(mouse, camera);
+
+    // Determine if any clickable object is intersected
+    const intersects = raycaster.intersectObjects(clickableObjects);
+
+    if (intersects.length > 0) {
+        const clickedObject = intersects[0].object;
+        if (clickedObject.userData && clickedObject.userData.url) {
+            window.open(clickedObject.userData.url, '_blank'); // Open the project link in a new tab
+        }
+    }
+}
+
 
 // Animation loop to render the scene and update the movement
 function animate() {
