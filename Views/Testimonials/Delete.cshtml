@@ -1,0 +1,19 @@
+﻿@model ProjectPortfolio.Models.Testimonial
+
+<h2>Delete Testimonial</h2>
+
+<h3>Are you sure you want to delete this?</h3>
+
+<div>
+    <h4>Author Name</h4>
+    <p>@Model.AuthorName</p>
+
+    <h4>Content</h4>
+    <p>@Model.Content</p>
+</div>
+
+<form asp-action="Delete">
+    <input type="hidden" asp-for="TestimonialId" />
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>

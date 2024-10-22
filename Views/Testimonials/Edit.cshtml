@@ -1,0 +1,24 @@
+﻿@model ProjectPortfolio.Models.Testimonial
+
+<h2>Edit Testimonial</h2>
+
+<form asp-action="Edit">
+    <div class="form-group">
+        <label asp-for="AuthorName"></label>
+        <input asp-for="AuthorName" class="form-control" />
+        <span asp-validation-for="AuthorName" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Content"></label>
+        <textarea asp-for="Content" class="form-control"></textarea>
+        <span asp-validation-for="Content" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="DatePosted"></label>
+        <input asp-for="DatePosted" type="date" class="form-control" />
+        <span asp-validation-for="DatePosted" class="text-danger"></span>
+    </div>
+    <input type="hidden" asp-for="TestimonialId" />
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>

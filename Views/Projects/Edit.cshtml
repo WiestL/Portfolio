@@ -1,0 +1,34 @@
+﻿@model ProjectPortfolio.Models.Project
+
+<h2>Edit Project</h2>
+
+<form asp-action="Edit">
+    <div class="form-group">
+        <label asp-for="Title"></label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Description"></label>
+        <textarea asp-for="Description" class="form-control"></textarea>
+        <span asp-validation-for="Description" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="ProjectUrl"></label>
+        <input asp-for="ProjectUrl" class="form-control" />
+        <span asp-validation-for="ProjectUrl" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="ImageUrl"></label>
+        <input asp-for="ImageUrl" class="form-control" />
+        <span asp-validation-for="ImageUrl" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="DateCreated"></label>
+        <input asp-for="DateCreated" type="date" class="form-control" />
+        <span asp-validation-for="DateCreated" class="text-danger"></span>
+    </div>
+    <input type="hidden" asp-for="ProjectId" />
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>

@@ -1,0 +1,33 @@
+﻿@model IEnumerable<ProjectPortfolio.Models.Testimonial>
+
+<h2>Testimonials</h2>
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">Create New</a>
+</p>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Author Name</th>
+            <th>Content</th>
+            <th>Date Posted</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.AuthorName</td>
+                <td>@item.Content</td>
+                <td>@item.DatePosted.ToShortDateString()</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.TestimonialId">Edit</a> |
+                    <a asp-action="Details" asp-route-id="@item.TestimonialId">Details</a> |
+                    <a asp-action="Delete" asp-route-id="@item.TestimonialId">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

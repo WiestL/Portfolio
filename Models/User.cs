@@ -1,14 +1,12 @@
-﻿namespace ProjectPortfolio.Models
+﻿using Microsoft.AspNetCore.Identity;
+
+namespace ProjectPortfolio.Models
 {
-    public class User
+    public class User : IdentityUser
     {
-        public int UserId { get; set; }
-        public string Username { get; set; }
-        public string Email { get; set; }
-        public string PasswordHash { get; set; }
+        // Custom properties
+        public string CustomUsername { get; set; } // Rename Username to avoid confusion with IdentityUser.UserName
 
-        // Navigation Properties
-        // Here you would also implement roles and other identity management properties
+        // Additional properties can go here
     }
-
 }

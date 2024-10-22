@@ -1,12 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProjectPortfolio.Contexts;
 using ProjectPortfolio.Models;
+using System.Threading.Tasks;
 
 namespace ProjectPortfolio.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
+    [Authorize(Roles = "Admin")]
     public class CategoriesController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -16,85 +17,143 @@ namespace ProjectPortfolio.Controllers
             _context = context;
         }
 
-        // GET: api/Categories
-        [HttpGet]
-        public async Task<IActionResult> GetCategories()
+        // GET: Categories
+        public async Task<IActionResult> Index()
         {
-            var categories = await _context.Categories.ToListAsync();
-            return Ok(categories);
+            return View(await _context.Categories.ToListAsync());
         }
 
-        // GET: api/Categories/5
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetCategory(int id)
+        // GET: Categories/Details/5
+        public async Task<IActionResult> Details(int? id)
         {
-            var category = await _context.Categories.FindAsync(id);
+            if (id == null)
+            {
+                return NotFound();
+            }
 
+            var category = await _context.Categories
+                .FirstOrDefaultAsync(m => m.CategoryId == id);
             if (category == null)
             {
                 return NotFound();
             }
 
-            return Ok(category);
+            return View(category);
         }
 
-        // POST: api/Categories
+        // GET: Categories/Create
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // POST: Categories/Create
         [HttpPost]
-        public async Task<IActionResult> CreateCategory([FromBody] Category category)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("CategoryId,Name,Description")] Category category)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
-            }
-
-            _context.Categories.Add(category);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetCategory), new { id = category.CategoryId }, category);
-        }
-
-        // PUT: api/Categories/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateCategory(int id, [FromBody] Category category)
-        {
-            if (id != category.CategoryId || !ModelState.IsValid)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(category).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.Categories.Any(c => c.CategoryId == id))
+                Console.WriteLine("Model state is invalid. Errors:");
+                foreach (var modelState in ModelState.Values)
                 {
-                    return NotFound();
+                    foreach (var error in modelState.Errors)
+                    {
+                        Console.WriteLine(error.ErrorMessage);
+                    }
                 }
-                throw;
+                return View(category);
             }
 
-            return NoContent();
+            _context.Add(category);
+            await _context.SaveChangesAsync();
+            Console.WriteLine("Category saved successfully.");
+
+            return RedirectToAction(nameof(Index));
         }
 
-        // DELETE: api/Categories/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteCategory(int id)
+
+        // GET: Categories/Edit/5
+        public async Task<IActionResult> Edit(int? id)
         {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
             var category = await _context.Categories.FindAsync(id);
             if (category == null)
             {
                 return NotFound();
             }
+            return View(category);
+        }
 
+        // POST: Categories/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("CategoryId,Name,Description")] Category category)
+        {
+            if (id != category.CategoryId)
+            {
+                return NotFound();
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(category);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!CategoryExists(category.CategoryId))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            return View(category);
+        }
+
+        // GET: Categories/Delete/5
+        public async Task<IActionResult> Delete(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var category = await _context.Categories
+                .FirstOrDefaultAsync(m => m.CategoryId == id);
+            if (category == null)
+            {
+                return NotFound();
+            }
+
+            return View(category);
+        }
+
+        // POST: Categories/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var category = await _context.Categories.FindAsync(id);
             _context.Categories.Remove(category);
             await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
 
-            return NoContent();
+        private bool CategoryExists(int id)
+        {
+            return _context.Categories.Any(e => e.CategoryId == id);
         }
     }
-
 }

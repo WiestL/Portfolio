@@ -7,7 +7,7 @@
         public string Description { get; set; }
 
         // Navigation Properties
-        public ICollection<ProjectCategory> ProjectCategories { get; set; }
+        public ICollection<ProjectCategory>? ProjectCategories { get; set; }
     }
 
 }

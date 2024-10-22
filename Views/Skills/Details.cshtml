@@ -1,0 +1,16 @@
+﻿@model ProjectPortfolio.Models.Skill
+
+<h2>Skill Details</h2>
+
+<div>
+    <h4>Name</h4>
+    <p>@Model.Name</p>
+
+    <h4>Description</h4>
+    <p>@Model.Description</p>
+</div>
+
+<p>
+    <a asp-action="Edit" asp-route-id="@Model.SkillId">Edit</a> |
+    <a asp-action="Index">Back to List</a>
+</p>

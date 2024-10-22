@@ -1,28 +1,33 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using ProjectPortfolio.Contexts;
 using ProjectPortfolio.Models;
+using ProjectPortfolio.Contexts;
 
 namespace ProjectPortfolio.Controllers
 {
     [Authorize(Roles = "Admin")]
-    public class TestimonialsController : Controller
+    public class ProjectsController : Controller
     {
         private readonly ApplicationDbContext _context;
 
-        public TestimonialsController(ApplicationDbContext context)
+        public ProjectsController(ApplicationDbContext context)
         {
             _context = context;
         }
 
-        // GET: Testimonials
+        // GET: Projects
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Testimonials.ToListAsync());
+            var projects = await _context.Projects
+                .Include(p => p.ProjectSkills)
+                .Include(p => p.ProjectCategories)
+                .Include(p => p.Testimonials)
+                .ToListAsync();
+            return View(projects);
         }
 
-        // GET: Testimonials/Details/5
+        // GET: Projects/Details/5
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -30,37 +35,41 @@ namespace ProjectPortfolio.Controllers
                 return NotFound();
             }
 
-            var testimonial = await _context.Testimonials
-                .FirstOrDefaultAsync(m => m.TestimonialId == id);
-            if (testimonial == null)
+            var project = await _context.Projects
+                .Include(p => p.ProjectSkills)
+                .Include(p => p.ProjectCategories)
+                .Include(p => p.Testimonials)
+                .FirstOrDefaultAsync(p => p.ProjectId == id);
+
+            if (project == null)
             {
                 return NotFound();
             }
 
-            return View(testimonial);
+            return View(project);
         }
 
-        // GET: Testimonials/Create
+        // GET: Projects/Create
         public IActionResult Create()
         {
             return View();
         }
 
-        // POST: Testimonials/Create
+        // POST: Projects/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("TestimonialId,AuthorName,Content,DatePosted,ProjectId")] Testimonial testimonial)
+        public async Task<IActionResult> Create([Bind("ProjectId,Title,Description,ProjectUrl,ImageUrl,DateCreated")] Project project)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(testimonial);
+                _context.Add(project);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            return View(testimonial);
+            return View(project);
         }
 
-        // GET: Testimonials/Edit/5
+        // GET: Projects/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -68,20 +77,20 @@ namespace ProjectPortfolio.Controllers
                 return NotFound();
             }
 
-            var testimonial = await _context.Testimonials.FindAsync(id);
-            if (testimonial == null)
+            var project = await _context.Projects.FindAsync(id);
+            if (project == null)
             {
                 return NotFound();
             }
-            return View(testimonial);
+            return View(project);
         }
 
-        // POST: Testimonials/Edit/5
+        // POST: Projects/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("TestimonialId,AuthorName,Content,DatePosted,ProjectId")] Testimonial testimonial)
+        public async Task<IActionResult> Edit(int id, [Bind("ProjectId,Title,Description,ProjectUrl,ImageUrl,DateCreated")] Project project)
         {
-            if (id != testimonial.TestimonialId)
+            if (id != project.ProjectId)
             {
                 return NotFound();
             }
@@ -90,12 +99,12 @@ namespace ProjectPortfolio.Controllers
             {
                 try
                 {
-                    _context.Update(testimonial);
+                    _context.Update(project);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!TestimonialExists(testimonial.TestimonialId))
+                    if (!ProjectExists(project.ProjectId))
                     {
                         return NotFound();
                     }
@@ -106,10 +115,10 @@ namespace ProjectPortfolio.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            return View(testimonial);
+            return View(project);
         }
 
-        // GET: Testimonials/Delete/5
+        // GET: Projects/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -117,30 +126,30 @@ namespace ProjectPortfolio.Controllers
                 return NotFound();
             }
 
-            var testimonial = await _context.Testimonials
-                .FirstOrDefaultAsync(m => m.TestimonialId == id);
-            if (testimonial == null)
+            var project = await _context.Projects
+                .FirstOrDefaultAsync(p => p.ProjectId == id);
+            if (project == null)
             {
                 return NotFound();
             }
 
-            return View(testimonial);
+            return View(project);
         }
 
-        // POST: Testimonials/Delete/5
+        // POST: Projects/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var testimonial = await _context.Testimonials.FindAsync(id);
-            _context.Testimonials.Remove(testimonial);
+            var project = await _context.Projects.FindAsync(id);
+            _context.Projects.Remove(project);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
-        private bool TestimonialExists(int id)
+        private bool ProjectExists(int id)
         {
-            return _context.Testimonials.Any(e => e.TestimonialId == id);
+            return _context.Projects.Any(e => e.ProjectId == id);
         }
     }
 }

@@ -1,0 +1,19 @@
+﻿@model ProjectPortfolio.Models.Testimonial
+
+<h2>Testimonial Details</h2>
+
+<div>
+    <h4>Author Name</h4>
+    <p>@Model.AuthorName</p>
+
+    <h4>Content</h4>
+    <p>@Model.Content</p>
+
+    <h4>Date Posted</h4>
+    <p>@Model.DatePosted.ToShortDateString()</p>
+</div>
+
+<p>
+    <a asp-action="Edit" asp-route-id="@Model.TestimonialId">Edit</a> |
+    <a asp-action="Index">Back to List</a>
+</p>

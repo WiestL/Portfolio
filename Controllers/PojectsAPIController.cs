@@ -8,11 +8,11 @@ namespace ProjectPortfolio.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ProjectsController : Controller
+    public class ProjectsAPIController : Controller
     {
         private readonly ApplicationDbContext _context;
 
-        public ProjectsController(ApplicationDbContext context)
+        public ProjectsAPIController(ApplicationDbContext context)
         {
             _context = context;
         }

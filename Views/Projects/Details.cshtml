@@ -1,0 +1,25 @@
+﻿@model ProjectPortfolio.Models.Project
+
+<h2>Project Details</h2>
+
+<div>
+    <h4>Title</h4>
+    <p>@Model.Title</p>
+
+    <h4>Description</h4>
+    <p>@Model.Description</p>
+
+    <h4>Project URL</h4>
+    <p>@Model.ProjectUrl</p>
+
+    <h4>Image URL</h4>
+    <p>@Model.ImageUrl</p>
+
+    <h4>Date Created</h4>
+    <p>@Model.DateCreated.ToShortDateString()</p>
+</div>
+
+<p>
+    <a asp-action="Edit" asp-route-id="@Model.ProjectId">Edit</a> |
+    <a asp-action="Index">Back to List</a>
+</p>

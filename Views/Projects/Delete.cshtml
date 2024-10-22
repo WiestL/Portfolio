@@ -1,0 +1,19 @@
+﻿@model ProjectPortfolio.Models.Project
+
+<h2>Delete Project</h2>
+
+<h3>Are you sure you want to delete this?</h3>
+
+<div>
+    <h4>Title</h4>
+    <p>@Model.Title</p>
+
+    <h4>Description</h4>
+    <p>@Model.Description</p>
+</div>
+
+<form asp-action="Delete">
+    <input type="hidden" asp-for="ProjectId" />
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>

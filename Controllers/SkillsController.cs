@@ -1,12 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProjectPortfolio.Contexts;
 using ProjectPortfolio.Models;
 
 namespace ProjectPortfolio.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
+    [Authorize(Roles = "Admin")]
     public class SkillsController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -16,84 +16,131 @@ namespace ProjectPortfolio.Controllers
             _context = context;
         }
 
-        // GET: api/Skills
-        [HttpGet]
-        public async Task<IActionResult> GetSkills()
+        // GET: Skills
+        public async Task<IActionResult> Index()
         {
-            var skills = await _context.Skills.ToListAsync();
-            return Ok(skills);
+            return View(await _context.Skills.ToListAsync());
         }
 
-        // GET: api/Skills/5
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetSkill(int id)
+        // GET: Skills/Details/5
+        public async Task<IActionResult> Details(int? id)
         {
-            var skill = await _context.Skills.FindAsync(id);
+            if (id == null)
+            {
+                return NotFound();
+            }
 
+            var skill = await _context.Skills
+                .FirstOrDefaultAsync(m => m.SkillId == id);
             if (skill == null)
             {
                 return NotFound();
             }
 
-            return Ok(skill);
+            return View(skill);
         }
 
-        // POST: api/Skills
+        // GET: Skills/Create
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // POST: Skills/Create
         [HttpPost]
-        public async Task<IActionResult> CreateSkill([FromBody] Skill skill)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("SkillId,Name,Description")] Skill skill)
         {
-            if (!ModelState.IsValid)
+            if (ModelState.IsValid)
             {
-                return BadRequest(ModelState);
-            }
-
-            _context.Skills.Add(skill);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetSkill), new { id = skill.SkillId }, skill);
-        }
-
-        // PUT: api/Skills/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateSkill(int id, [FromBody] Skill skill)
-        {
-            if (id != skill.SkillId || !ModelState.IsValid)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(skill).State = EntityState.Modified;
-
-            try
-            {
+                _context.Add(skill);
                 await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
             }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.Skills.Any(s => s.SkillId == id))
-                {
-                    return NotFound();
-                }
-                throw;
-            }
-
-            return NoContent();
+            return View(skill);
         }
 
-        // DELETE: api/Skills/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteSkill(int id)
+        // GET: Skills/Edit/5
+        public async Task<IActionResult> Edit(int? id)
         {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
             var skill = await _context.Skills.FindAsync(id);
             if (skill == null)
             {
                 return NotFound();
             }
+            return View(skill);
+        }
 
+        // POST: Skills/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("SkillId,Name,Description")] Skill skill)
+        {
+            if (id != skill.SkillId)
+            {
+                return NotFound();
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(skill);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!SkillExists(skill.SkillId))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            return View(skill);
+        }
+
+        // GET: Skills/Delete/5
+        public async Task<IActionResult> Delete(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var skill = await _context.Skills
+                .FirstOrDefaultAsync(m => m.SkillId == id);
+            if (skill == null)
+            {
+                return NotFound();
+            }
+
+            return View(skill);
+        }
+
+        // POST: Skills/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var skill = await _context.Skills.FindAsync(id);
             _context.Skills.Remove(skill);
             await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
 
-            return NoContent();
+        private bool SkillExists(int id)
+        {
+            return _context.Skills.Any(e => e.SkillId == id);
         }
     }
 }
