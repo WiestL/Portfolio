@@ -22,12 +22,6 @@ namespace ProjectPortfolio.Contexts
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<Testimonial>()
-           .HasOne(t => t.Project)
-           .WithMany(p => p.Testimonials)
-           .HasForeignKey(t => t.ProjectId)
-           .OnDelete(DeleteBehavior.Cascade);
-
             // Many-to-Many: Project-Skill
             modelBuilder.Entity<ProjectSkill>()
                 .HasKey(ps => new { ps.ProjectId, ps.SkillId });

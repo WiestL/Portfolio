@@ -352,12 +352,16 @@ namespace ProjectPortfolio.Migrations
                     b.Property<DateTime>("DatePosted")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("ProjectId")
+                    b.Property<string>("ProjectId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ProjectId1")
                         .HasColumnType("int");
 
                     b.HasKey("TestimonialId");
 
-                    b.HasIndex("ProjectId");
+                    b.HasIndex("ProjectId1");
 
                     b.ToTable("Testimonials");
                 });
@@ -466,9 +470,7 @@ namespace ProjectPortfolio.Migrations
                 {
                     b.HasOne("ProjectPortfolio.Models.Project", "Project")
                         .WithMany("Testimonials")
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ProjectId1");
 
                     b.Navigation("Project");
                 });
