@@ -21,13 +21,23 @@ namespace ProjectPortfolio.Controllers
         [HttpGet]
         public async Task<IActionResult> GetProjects()
         {
-            var projects = await _context.Projects
-                .Include(p => p.ProjectSkills)
-                .Include(p => p.ProjectCategories)
-                .Include(p => p.Testimonials)
-                .ToListAsync();
-            return Ok(projects);
+            try
+            {
+                var projects = await _context.Projects
+                    .Include(p => p.ProjectSkills)
+                    .Include(p => p.ProjectCategories)
+                    .Include(p => p.Testimonials)
+                    .ToListAsync();
+                return Ok(projects);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception details
+                Console.WriteLine($"Error fetching projects: {ex.Message}");
+                return StatusCode(500, "Internal server error while fetching projects.");
+            }
         }
+
 
         // GET: api/Projects/5
         [HttpGet("{id}")]

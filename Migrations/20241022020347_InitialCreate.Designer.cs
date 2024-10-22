@@ -12,8 +12,8 @@ using ProjectPortfolio.Contexts;
 namespace ProjectPortfolio.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20241022010426_UpdateTestimonialLinkToProjectName")]
-    partial class UpdateTestimonialLinkToProjectName
+    [Migration("20241022020347_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -89,11 +89,6 @@ namespace ProjectPortfolio.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Discriminator")
-                        .IsRequired()
-                        .HasMaxLength(13)
-                        .HasColumnType("nvarchar(13)");
-
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -145,10 +140,6 @@ namespace ProjectPortfolio.Migrations
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
 
                     b.ToTable("AspNetUsers", (string)null);
-
-                    b.HasDiscriminator().HasValue("IdentityUser");
-
-                    b.UseTphMappingStrategy();
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
@@ -278,7 +269,7 @@ namespace ProjectPortfolio.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("ProjectId");
 
@@ -355,25 +346,14 @@ namespace ProjectPortfolio.Migrations
                     b.Property<DateTime>("DatePosted")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("ProjectName")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("ProjectId")
+                        .HasColumnType("int");
 
                     b.HasKey("TestimonialId");
 
-                    b.HasIndex("ProjectName");
+                    b.HasIndex("ProjectId");
 
                     b.ToTable("Testimonials");
-                });
-
-            modelBuilder.Entity("ProjectPortfolio.Models.User", b =>
-                {
-                    b.HasBaseType("Microsoft.AspNetCore.Identity.IdentityUser");
-
-                    b.Property<string>("CustomUsername")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasDiscriminator().HasValue("User");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -469,8 +449,9 @@ namespace ProjectPortfolio.Migrations
                 {
                     b.HasOne("ProjectPortfolio.Models.Project", "Project")
                         .WithMany("Testimonials")
-                        .HasForeignKey("ProjectName")
-                        .HasPrincipalKey("Title");
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Project");
                 });

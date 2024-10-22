@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace ProjectPortfolio.Contexts
 {
-    public class ApplicationDbContext : IdentityDbContext<IdentityUser>
+    public class ApplicationDbContext : IdentityDbContext<User>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
@@ -14,7 +14,6 @@ namespace ProjectPortfolio.Contexts
         public DbSet<Skill> Skills { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<Testimonial> Testimonials { get; set; }
-        public DbSet<User> Users { get; set; }
         public DbSet<ProjectSkill> ProjectSkills { get; set; }
         public DbSet<ProjectCategory> ProjectCategories { get; set; }
 
