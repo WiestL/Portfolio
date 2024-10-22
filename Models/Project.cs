@@ -10,9 +10,9 @@
         public DateTime DateCreated { get; set; }
 
         // Navigation Properties
-        public ICollection<ProjectSkill> ProjectSkills { get; set; }
-        public ICollection<ProjectCategory> ProjectCategories { get; set; }
-        public ICollection<Testimonial> Testimonials { get; set; }
+        public ICollection<ProjectSkill>? ProjectSkills { get; set; }
+        public ICollection<ProjectCategory>? ProjectCategories { get; set; }
+        public ICollection<Testimonial>? Testimonials { get; set; }
     }
 
 }

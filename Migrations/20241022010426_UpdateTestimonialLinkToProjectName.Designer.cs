@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProjectPortfolio.Contexts;
 
@@ -11,9 +12,11 @@ using ProjectPortfolio.Contexts;
 namespace ProjectPortfolio.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241022010426_UpdateTestimonialLinkToProjectName")]
+    partial class UpdateTestimonialLinkToProjectName
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -275,7 +278,7 @@ namespace ProjectPortfolio.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("ProjectId");
 
@@ -352,16 +355,12 @@ namespace ProjectPortfolio.Migrations
                     b.Property<DateTime>("DatePosted")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("ProjectId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("ProjectId1")
-                        .HasColumnType("int");
+                    b.Property<string>("ProjectName")
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("TestimonialId");
 
-                    b.HasIndex("ProjectId1");
+                    b.HasIndex("ProjectName");
 
                     b.ToTable("Testimonials");
                 });
@@ -470,7 +469,8 @@ namespace ProjectPortfolio.Migrations
                 {
                     b.HasOne("ProjectPortfolio.Models.Project", "Project")
                         .WithMany("Testimonials")
-                        .HasForeignKey("ProjectId1");
+                        .HasForeignKey("ProjectName")
+                        .HasPrincipalKey("Title");
 
                     b.Navigation("Project");
                 });

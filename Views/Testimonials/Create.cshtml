@@ -2,7 +2,7 @@
 
 <h2>Create Testimonial</h2>
 
-<form asp-action="Create">
+<form asp-action="Create" method="post">
     <div class="form-group">
         <label asp-for="AuthorName"></label>
         <input asp-for="AuthorName" class="form-control" />
@@ -19,8 +19,10 @@
         <span asp-validation-for="DatePosted" class="text-danger"></span>
     </div>
     <div class="form-group">
-        <label asp-for="ProjectId"></label>
-        <input asp-for="ProjectId" class="form-control" />
+        <label asp-for="ProjectId">Project</label>
+        <select asp-for="ProjectId" class="form-control" asp-items="@(new SelectList(ViewBag.Projects, "ProjectId", "Title"))">
+            <option value="">-- Select Project --</option>
+        </select>
         <span asp-validation-for="ProjectId" class="text-danger"></span>
     </div>
     <button type="submit" class="btn btn-primary">Save</button>

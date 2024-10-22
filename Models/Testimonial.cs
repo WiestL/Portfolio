@@ -8,10 +8,11 @@
         public DateTime DatePosted { get; set; }
 
         // Foreign Key
-        public int ProjectId { get; set; }
+        public string ProjectId { get; set; } // Now link by ProjectName
 
         // Navigation Properties
-        public Project Project { get; set; }
+        public Project? Project { get; set; }
     }
+
 
 }

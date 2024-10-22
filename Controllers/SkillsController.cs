@@ -57,8 +57,16 @@ namespace ProjectPortfolio.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+
+            // Log validation errors for troubleshooting
+            foreach (var error in ModelState.Values.SelectMany(v => v.Errors))
+            {
+                Console.WriteLine($"Error: {error.ErrorMessage}");
+            }
+
             return View(skill);
         }
+
 
         // GET: Skills/Edit/5
         public async Task<IActionResult> Edit(int? id)

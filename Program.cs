@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using ProjectPortfolio.Contexts;
+using Microsoft.Extensions.DependencyInjection;
 using ProjectPortfolio.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,7 +25,6 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LoginPath = "/Identity/Account/Login";
     options.AccessDeniedPath = "/Identity/Account/AccessDenied";
 });
-
 
 builder.Services.AddAuthentication();
 builder.Services.AddAuthorization();
@@ -78,35 +79,19 @@ async Task SeedRolesAndAdminUser(UserManager<User> userManager, RoleManager<Iden
         await roleManager.CreateAsync(new IdentityRole("Admin"));
     }
 
-    // Check if the Admin user already exists
+    // Create default Admin user if it doesn't exist
     var adminUser = await userManager.FindByEmailAsync("admin@example.com");
     if (adminUser == null)
     {
-        // Create a new Admin user if it doesn't exist
         adminUser = new User
         {
             UserName = "admin@example.com",
             Email = "admin@example.com",
             EmailConfirmed = true
         };
-        var result = await userManager.CreateAsync(adminUser, "AdminPassword123!");
+        await userManager.CreateAsync(adminUser, "AdminPassword123!");
 
-        if (result.Succeeded)
-        {
-            await userManager.AddToRoleAsync(adminUser, "Admin");
-        }
-        else
-        {
-            Console.WriteLine("Failed to create admin user: " + string.Join(", ", result.Errors.Select(e => e.Description)));
-        }
-    }
-    else
-    {
-        // If the user already exists, ensure they have the Admin role
-        if (!await userManager.IsInRoleAsync(adminUser, "Admin"))
-        {
-            await userManager.AddToRoleAsync(adminUser, "Admin");
-        }
+        // Assign Admin role to the user
+        await userManager.AddToRoleAsync(adminUser, "Admin");
     }
 }
-

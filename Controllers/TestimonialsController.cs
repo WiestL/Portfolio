@@ -41,24 +41,27 @@ namespace ProjectPortfolio.Controllers
         }
 
         // GET: Testimonials/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            ViewBag.Projects = await _context.Projects.ToListAsync();
             return View();
         }
 
-        // POST: Testimonials/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("TestimonialId,AuthorName,Content,DatePosted,ProjectId")] Testimonial testimonial)
+        public async Task<IActionResult> Create([Bind("AuthorName,Content,DatePosted,ProjectId")] Testimonial testimonial)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                _context.Add(testimonial);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                ViewBag.Projects = await _context.Projects.ToListAsync();
+                return View(testimonial);
             }
-            return View(testimonial);
+
+            _context.Add(testimonial);
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
         }
+
 
         // GET: Testimonials/Edit/5
         public async Task<IActionResult> Edit(int? id)
