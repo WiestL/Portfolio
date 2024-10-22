@@ -6,6 +6,11 @@ let raycaster;
 const proximityDistance = 2;  // The proximity distance in front of the pedestal
 let intersectedPedestal = null;  // Track the current pedestal in proximity
 
+let pedestals = [];
+let pedestalBoxes = [];  // For collision detection with the character
+let pedestalTouched = [];  // To track if the pedestal has already triggered
+let linkRectangles = [];  // For storing link rectangles and their associated URLs
+
 // Initialize the scene
 function init() {
     // Create the scene
@@ -44,11 +49,8 @@ function init() {
     // Create the museum environment (floor and walls)
     createMuseum();
 
-    // Ensure pedestals are created
-    createPedestals();
-
-    // Call the function to create link rectangles for each pedestal
-    createInteractiveLinkBoxes();
+    // Fetch projects and create pedestals dynamically
+    fetchProjectsAndCreatePedestals();
 
     // Handle window resize
     window.addEventListener('resize', onWindowResize, false);
@@ -107,6 +109,78 @@ function createMuseum() {
     rightWall.position.set(10, 1, 25);  // Position it to leave a doorway space
     scene.add(rightWall);
     wallBoxes.push(new THREE.Box3().setFromObject(rightWall));
+}
+
+// Function to fetch projects and create pedestals dynamically
+async function fetchProjectsAndCreatePedestals() {
+    try {
+        const response = await fetch('/api/projects'); // Replace with actual endpoint URL
+        const projects = await response.json();
+
+        createPedestals(projects);
+        createInteractiveLinkBoxes(projects);
+    } catch (error) {
+        console.error("Error fetching projects:", error);
+    }
+}
+
+// Function to create pedestals dynamically based on projects
+function createPedestals(projects) {
+    const pedestalGeometry = new THREE.BoxGeometry(1, 1, 1);  // Cube geometry for the pedestal
+    const pedestalMaterial = new THREE.MeshLambertMaterial({ color: 0xdddddd });  // Light gray color
+
+    projects.forEach((project, index) => {
+        const pedestal = new THREE.Mesh(pedestalGeometry, pedestalMaterial);
+        pedestal.position.set(index * 8, 0.5, 0);  // Spread out pedestals
+        scene.add(pedestal);
+        pedestals.push(pedestal);
+        pedestalBoxes.push(new THREE.Box3().setFromObject(pedestal));  // Initialize bounding box
+        pedestalTouched.push(false);  // Not touched initially
+    });
+}
+
+function createInteractiveLinkBoxes(projects) {
+    const linkGeometry = new THREE.PlaneGeometry(3, 1.5);  // Rectangle size
+    const linkMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide });  // Green rectangle for visibility
+
+    const loader = new THREE.FontLoader();
+    loader.load(
+        'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+        function (font) {
+            projects.forEach((project, index) => {
+                const pedestal = pedestals[index];
+
+                // Create link rectangle to the left of the pedestal
+                const linkRectangle = new THREE.Mesh(linkGeometry, linkMaterial);
+                linkRectangle.position.set(pedestal.position.x + 1.5, 0.1, pedestal.position.z - 2);
+                linkRectangle.rotation.x = -Math.PI / 2;
+                scene.add(linkRectangle);
+
+                // Create bounding box for the rectangle to detect interaction
+                const linkBox = new THREE.Box3().setFromObject(linkRectangle);
+                linkRectangles.push({ linkBox, url: project.projectUrl });  // Use the actual project URL
+
+                // Create 3D text for "Press Enter to View Project"
+                const text = 'Press Enter to View Project';
+                const textGeometry = new THREE.TextGeometry(text, {
+                    font: font,
+                    size: 0.28,
+                    height: 0.01,
+                    curveSegments: 12,
+                });
+                const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+
+                textMesh.position.set(linkRectangle.position.x - 0.9, 0.2, linkRectangle.position.z + 1);
+                textMesh.rotation.x = -Math.PI / 2;
+                scene.add(textMesh);
+            });
+        },
+        undefined,
+        function (error) {
+            console.error('An error occurred while loading the font:', error);
+        }
+    );
 }
 
 // Handle window resizing
@@ -181,215 +255,6 @@ function updateMovement() {
     camera.position.x = character.position.x + 10;
     camera.position.z = character.position.z + 10;
     camera.lookAt(character.position);
-}
-
-let pedestals = [];
-let pedestalBoxes = [];  // For collision detection with the character
-let pedestalTouched = [];  // To track if the pedestal has already triggered
-
-function createPedestals() {
-    const pedestalGeometry = new THREE.BoxGeometry(1, 1, 1);  // Cube geometry for the pedestal
-    const pedestalMaterial = new THREE.MeshLambertMaterial({ color: 0xdddddd });  // Light gray color
-
-    // Example: Add three pedestals
-    const pedestal1 = new THREE.Mesh(pedestalGeometry, pedestalMaterial);
-    pedestal1.position.set(0, 0.5, 0);
-    scene.add(pedestal1);
-    pedestals.push(pedestal1);
-    pedestalBoxes.push(new THREE.Box3().setFromObject(pedestal1));  // Initialize bounding box
-    pedestalTouched.push(false);  // Not touched initially
-
-    const pedestal2 = new THREE.Mesh(pedestalGeometry, pedestalMaterial);
-    pedestal2.position.set(8, 0.5, 0);
-    scene.add(pedestal2);
-    pedestals.push(pedestal2);
-    pedestalBoxes.push(new THREE.Box3().setFromObject(pedestal2));
-    pedestalTouched.push(false);  // Not touched initially
-
-    const pedestal3 = new THREE.Mesh(pedestalGeometry, pedestalMaterial);
-    pedestal3.position.set(16, 0.5, 0);
-    scene.add(pedestal3);
-    pedestals.push(pedestal3);
-    pedestalBoxes.push(new THREE.Box3().setFromObject(pedestal3));
-    pedestalTouched.push(false);  // Not touched initially
-}
-function checkProximityToPedestals() {
-    characterBox.setFromObject(character);  // Update character's bounding box
-
-    for (let i = 0; i < pedestalBoxes.length; i++) {
-        pedestalBoxes[i].setFromObject(pedestals[i]);  // Ensure pedestal bounding boxes are up to date
-
-        if (characterBox.intersectsBox(pedestalBoxes[i])) {
-            if (!pedestalTouched[i]) {
-                console.log("Character is near pedestal:", i);  // Log proximity
-                console.log("Displaying project details for pedestal:", i);  // Added console log for debugging
-                showProjectDetails(i, pedestals[i]);  // Pass pedestal reference
-                pedestalTouched[i] = true;  // Ensure it's only shown once
-            }
-            return;  // Exit after detecting the first interaction
-        }
-    }
-}
-
-// Fetch and Display Project Information
-function showProjectDetails(pedestalIndex, pedestal) {
-    const projects = [
-        { title: 'Project 1', description: 'This is the first project about burgers.' },
-        { title: 'Project 2', description: 'This is the second project.' },
-        { title: 'Project 3', description: 'This is the third project.' },
-    ];
-
-    const project = projects[pedestalIndex];  // Get project details based on pedestal index
-
-    // Render project details on the ground in front of the pedestal
-    console.log("Creating project info on ground for:", project);  // Added console log for debugging
-    createProjectInfoOnGround(project, pedestal);
-}
-
-function createProjectInfoOnGround(project, pedestal) {
-    const loader = new THREE.FontLoader();
-
-    loader.load(
-        'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
-        function (font) {
-            console.log("Font loaded successfully.");  // Added console log for debugging
-            createTextMeshes(font, project, pedestal);
-        },
-        undefined,
-        function (error) {
-            console.error('An error occurred while loading the font:', error);
-        }
-    );
-}
-
-function createTextMeshes(font, project, pedestal) {
-    // Create 3D text for the project title
-    const textGeometry = new THREE.TextGeometry(project.title, {
-        font: font,
-        size: 0.4,  // Increase size for better legibility
-        height: 0.01,  // Increase thickness of the text
-        curveSegments: 24,  // Increase segments for smoother curves
-    });
-
-    const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });  // Phong material for better shading and legibility
-    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-
-    // Position the text on the ground in front of the pedestal
-    textMesh.position.set(pedestal.position.x + 0.7, 0.1, pedestal.position.z + 2);
-    textMesh.rotation.set(0, Math.PI / 4, 0);  // Lay flat on the ground
-
-    // Add the text to the scene
-    scene.add(textMesh);
-
-    // Create 3D text for the project description
-    const descriptionGeometry = new THREE.TextGeometry(project.description, {
-        font: font,
-        size: 0.3,  // Larger size for better legibility
-        height: 0.01,
-        curveSegments: 24,
-    });
-
-    const descriptionMesh = new THREE.Mesh(descriptionGeometry, textMaterial);
-
-    // Position the description below the title
-    descriptionMesh.position.set(pedestal.position.x, 0.1, pedestal.position.z + 4);
-    descriptionMesh.rotation.set(0, Math.PI / 4, 0);  // Lay flat on the ground
-
-    // Add the description to the scene
-    scene.add(descriptionMesh);
-
-    // Log for verification
-    console.log(`Text for "${project.title}" created at: `, textMesh.position);
-    console.log(`Description for "${project.description}" created at: `, descriptionMesh.position);
-}
-
-let linkRectangles = [];
-// Function to create link rectangles next to each pedestal
-// Function to create link rectangles next to each pedestal
-function createInteractiveLinkBoxes() {
-    const linkGeometry = new THREE.PlaneGeometry(3, 1.5);  // Rectangle size
-    const linkMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide });  // Green rectangle for visibility
-
-    const loader = new THREE.FontLoader();
-    loader.load(
-        'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
-        function (font) {
-            for (let i = 0; i < pedestals.length; i++) {
-                const pedestal = pedestals[i];
-
-                // Create link rectangle to the left of the pedestal
-                const linkRectangle = new THREE.Mesh(linkGeometry, linkMaterial);
-                linkRectangle.position.set(pedestal.position.x + 1.5, 0.1, pedestal.position.z -2);  // Position it to the left of the pedestal
-                linkRectangle.rotation.x = -Math.PI / 2;  // Ensure it's lying flat on the ground
-                linkRectangle.rotation.y = 0;
-                linkRectangle.rotation.z = 3.9;
-                scene.add(linkRectangle);
-
-                // Create bounding box for the rectangle to detect interaction
-                const linkBox = new THREE.Box3().setFromObject(linkRectangle);
-                linkRectangles.push({ linkBox, url: `https://example.com/project${i + 1}` });  // Add URL for the project
-
-                // Create 3D text for "Press Enter to View Project" with word wrapping
-                const text = 'Press Enter to View Project';
-                const maxCharsPerLine = 15;
-                const lines = [];
-                for (let j = 0; j < text.length; j += maxCharsPerLine) {
-                    lines.push(text.slice(j, j + maxCharsPerLine));
-                }
-                const wrappedText = lines.join('\n');
-
-                const textGeometry = new THREE.TextGeometry(wrappedText, {
-                    font: font,
-                    size: 0.28,
-                    height: 0.01,
-                    curveSegments: 12,
-                });
-                const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-
-                // Position the text above the link rectangle
-                textMesh.position.set(linkRectangle.position.x - 0.9, 0.2, linkRectangle.position.z + 1);
-                textMesh.rotation.x = -Math.PI / 2;  // Lay flat on the ground
-                textMesh.rotation.z = 0.75;
-                scene.add(textMesh);
-            }
-        },
-        undefined,
-        function (error) {
-            console.error('An error occurred while loading the font:', error);
-        }
-    );
-}
-
-let linkInteractionActive = false;  // Track if the character is in a link zone
-let linkOpened = false;  // Track if the link has already been opened
-
-function checkForLinkInteraction() {
-    let isIntersecting = false;
-
-    for (let i = 0; i < linkRectangles.length; i++) {
-        const { linkBox, url } = linkRectangles[i];
-
-        if (characterBox.intersectsBox(linkBox)) {
-            isIntersecting = true;  // The character is on a link rectangle
-
-            if (!linkOpened && !linkInteractionActive) {
-                linkInteractionActive = true;  // Allow interaction when character enters the rectangle
-                document.addEventListener('keydown', (event) => {
-                    if (event.key === 'Enter' && !linkOpened) {
-                        window.open(url, '_blank');  // Open the link in a new tab
-                        linkOpened = true;  // Prevent further tabs from opening
-                    }
-                });
-            }
-        }
-    }
-
-    // Reset the flag if the character moves away from the interactive rectangle
-    if (!isIntersecting) {
-        linkInteractionActive = false;
-        linkOpened = false;  // Reset the link interaction flag for the next interaction
-    }
 }
 
 // Animation loop to render the scene and update the movement
