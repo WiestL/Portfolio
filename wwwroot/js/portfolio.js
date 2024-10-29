@@ -6,6 +6,7 @@ let raycaster;
 let inTestimonialMode = false;  // Track whether user is in testimonial mode
 const proximityDistance = 2;  // The proximity distance in front of the pedestal
 let intersectedPedestal = null;  // Track the current pedestal in proximity
+let projectDropdown; // Dropdown for selecting project
 
 // Initialize the scene
 function init() {
@@ -137,6 +138,33 @@ function createAddTestimonialBox() {
         scene.add(textMesh);
     });
 }
+
+// Create project dropdown box
+function createProjectDropdown() {
+    const dropdownGeometry = new THREE.PlaneGeometry(3, 1);
+    const dropdownMaterial = new THREE.MeshLambertMaterial({ color: 0x0000ff, opacity: 0.5, transparent: true });
+    projectDropdown = new THREE.Mesh(dropdownGeometry, dropdownMaterial);
+    projectDropdown.position.set(7, 0.001, 5);  // Position next to the testimonial box
+    projectDropdown.rotation.x = -Math.PI / 2;
+    scene.add(projectDropdown);
+
+    // Add label text for dropdown
+    const loader = new THREE.FontLoader();
+    loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+        const textGeometry = new THREE.TextGeometry('Select Project', {
+            font: font,
+            size: 0.3,
+            height: 0.01,
+            curveSegments: 12,
+        });
+        const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
+        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+        textMesh.position.set(projectDropdown.position.x - 1.4, 0.02, projectDropdown.position.z);
+        textMesh.rotation.set(-Math.PI / 2, 0, 0);
+        scene.add(textMesh);
+    });
+}
+
 
 // Handle window resizing
 function onWindowResize() {
@@ -517,6 +545,7 @@ function enterTestimonialMode() {
     // Focus the browser to capture input
     document.addEventListener('keypress', handleTextInput);
 }
+
 // Submit the testimonial to the backend
 function submitTestimonial(text) {
     fetch('/api/testimonialsAPI', {
@@ -524,16 +553,23 @@ function submitTestimonial(text) {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ content: text })
+        body: JSON.stringify({ content: text, authorName: "Anonymous", projectId: 1 })
     }).then(response => {
         if (response.ok) {
             console.log('Testimonial added successfully');
             loadTestimonials();
         } else {
-            console.error('Failed to add testimonial');
+            response.json().then(data => {
+                console.error('Failed to add testimonial:', data);
+            });
         }
+    }).catch(error => {
+        console.error('Error submitting testimonial:', error);
     });
 }
+
+
+
 
 // Exit testimonial mode
 function exitTestimonialMode() {
@@ -547,6 +583,10 @@ function exitTestimonialMode() {
 let testimonialText = '';
 function handleTextInput(event) {
     if (event.key === 'Enter') {
+        if (testimonialText.trim() === '') {
+            console.error('Cannot submit an empty testimonial.');
+            return;
+        }
         console.log('Submitting testimonial:', testimonialText);
         submitTestimonial(testimonialText);
         exitTestimonialMode();
