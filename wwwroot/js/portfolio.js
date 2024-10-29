@@ -469,7 +469,6 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-
 function handleInteraction() {
     // Update the character's bounding box
     characterBox.setFromObject(character);
@@ -544,6 +543,21 @@ function exitTestimonialMode() {
     document.removeEventListener('keypress', handleTextInput);
 }
 
+// Handle text input for the testimonial
+let testimonialText = '';
+function handleTextInput(event) {
+    if (event.key === 'Enter') {
+        console.log('Submitting testimonial:', testimonialText);
+        submitTestimonial(testimonialText);
+        exitTestimonialMode();
+    } else if (event.key === 'Backspace') {
+        testimonialText = testimonialText.slice(0, -1);
+    } else {
+        testimonialText += event.key;
+    }
+    console.log('Current testimonial text:', testimonialText);
+}
+
 // Load testimonials and display them
 function loadTestimonials() {
     fetch('/api/testimonialsAPI')
@@ -566,133 +580,6 @@ function loadTestimonials() {
                 });
             });
         });
-}
-function checkProximityToPedestals() {
-    characterBox.setFromObject(character);  // Update character's bounding box
-
-    for (let i = 0; i < pedestalBoxes.length; i++) {
-        pedestalBoxes[i].setFromObject(pedestals[i]);  // Ensure pedestal bounding boxes are up to date
-
-        if (characterBox.intersectsBox(pedestalBoxes[i])) {
-            if (!pedestalTouched[i]) {
-                console.log("Character is near pedestal:", i);  // Log proximity
-                showProjectDetails(i, pedestals[i]);  // Pass pedestal reference
-                pedestalTouched[i] = true;  // Ensure it's only shown once
-            }
-            return;  // Exit after detecting the first interaction
-        }
-    }
-}
-
-// Fetch and Display Project Information
-function showProjectDetails(pedestalIndex, pedestal) {
-    // Assume projects data is already available in "pedestals" array
-    const project = pedestals[pedestalIndex]?.userData;
-
-    if (!project) {
-        console.error('No project data found for pedestal index:', pedestalIndex);
-        return;
-    }
-
-    // Render project details on the ground in front of the pedestal
-    createProjectInfoOnGround(project, pedestal);
-}
-
-function createProjectInfoOnGround(project, pedestal) {
-    const loader = new THREE.FontLoader();
-
-    loader.load(
-        'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
-        function (font) {
-            createTextMeshes(font, project, pedestal);
-        },
-        undefined,
-        function (error) {
-            console.error('An error occurred while loading the font:', error);
-        }
-    );
-}
-
-function createTextMeshes(font, project, pedestal) {
-    if (!project || !project.title || !project.description) {
-        console.error('Invalid project data:', project);
-        return;
-    }
-    // Create 3D text for the project title
-    const textGeometry = new THREE.TextGeometry(project.title, {
-        font: font,
-        size: 0.4,  // Increase size for better legibility
-        height: 0.01,  // Increase thickness of the text
-        curveSegments: 24,  // Increase segments for smoother curves
-    });
-
-    const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });  // Phong material for better shading and legibility
-    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-
-    // Position the text on the ground in front of the pedestal
-    textMesh.position.set(pedestal.position.x + 0.7, 0.1, pedestal.position.z + 2);
-    textMesh.rotation.set(0, Math.PI / 4, 0);  // Lay flat on the ground
-
-    // Add the text to the scene
-    scene.add(textMesh);
-
-    // Create 3D text for the project description
-    const descriptionGeometry = new THREE.TextGeometry(project.description, {
-        font: font,
-        size: 0.3,  // Larger size for better legibility
-        height: 0.01,
-        curveSegments: 24,
-    });
-
-    const descriptionMesh = new THREE.Mesh(descriptionGeometry, textMaterial);
-
-    // Position the description below the title
-    descriptionMesh.position.set(pedestal.position.x, 0.1, pedestal.position.z + 4);
-    descriptionMesh.rotation.set(0, Math.PI / 4, 0);  // Lay flat on the ground
-
-    // Add the description to the scene
-    scene.add(descriptionMesh);
-
-    // Create a clickable box (hitbox) for interaction
-    const linkGeometry = new THREE.PlaneGeometry(3, 1); // Adjust the size for appropriate clickable area
-    const linkMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0, transparent: true }); // Invisible plane
-    const linkMesh = new THREE.Mesh(linkGeometry, linkMaterial);
-
-    // Position the clickable box just above the project text
-    linkMesh.position.set(pedestal.position.x + 0.7, 0.2, pedestal.position.z + 2);
-    linkMesh.rotation.set(-Math.PI / 2, 0, Math.PI / 4); // Match with the text position
-
-    // Store the project URL for linking purposes
-    linkMesh.userData = { url: project.projectUrl };
-    scene.add(linkMesh);
-
-    // Add to clickable objects array
-    clickableObjects.push(linkMesh);
-}
-
-const clickableObjects = []; // Store clickable objects for raycasting
-
-// Raycast to detect clicks on link boxes
-document.addEventListener('mousedown', onDocumentMouseDown, false);
-
-function onDocumentMouseDown(event) {
-    // Calculate mouse position in normalized device coordinates
-    const mouse = new THREE.Vector2(
-        (event.clientX / window.innerWidth) * 2 - 1,
-        -(event.clientY / window.innerHeight) * 2 + 1
-    );
-
-    //raycaster.setFromCamera(mouse, camera);
-
-    // Determine if any clickable object is intersected
-    const intersects = raycaster.intersectObjects(clickableObjects);
-
-    if (intersects.length > 0) {
-        const clickedObject = intersects[0].object;
-        if (clickedObject.userData && clickedObject.userData.url) {
-            window.open(clickedObject.userData.url, '_blank'); // Open the project link in a new tab
-        }
-    }
 }
 
 
