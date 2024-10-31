@@ -6,6 +6,8 @@ let raycaster;
 let inTestimonialMode = false;  // Track whether user is in testimonial mode
 const proximityDistance = 2;  // The proximity distance in front of the pedestal
 let intersectedPedestal = null;  // Track the current pedestal in proximity
+let testimonialDisplayTextMesh;
+let projectNameTextMesh;
 
 // Initialize the scene
 function init() {
@@ -130,7 +132,7 @@ function createAddTestimonialBox() {
     // Add label text
     const loader = new THREE.FontLoader();
     loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
-        const textGeometry = new THREE.TextGeometry('Add Testimonial', {
+        const textGeometry = new THREE.TextGeometry('Add Review', {
             font: font,
             size: 0.3,
             height: 0.01,
@@ -225,7 +227,7 @@ async function createProjectDropdown() {
             projects.forEach((project, index) => {
                 const projectTextGeometry = new THREE.TextGeometry(project.title || '', {
                     font: font, // Use the loaded font here
-                    size: 0.2,
+                    size: 0.3,
                     height: 0.01,
                     curveSegments: 12,
                 });
@@ -290,10 +292,7 @@ function onWindowResize() {
 
 // Handle keydown events for movement
 function onKeyDown(event) {
-    if (inTestimonialMode) {
-        handleTextInput(event);  // If in testimonial mode, capture text input
-        return;
-    }
+    if (inTestimonialMode) return;
 
     switch (event.key) {
         case 'ArrowUp': case 'w': moveForward = true; break;
@@ -452,7 +451,7 @@ function createPedestals(projects) {
             url: project.projectUrl
         });
 
-        // Logging for debugging
+        // Logging for debuggingsd
         console.log(`Interaction box created at position: ${interactionBoxMesh.position.x}, ${interactionBoxMesh.position.y}, ${interactionBoxMesh.position.z}`);
 
         // Add "Link" text on the interaction box
@@ -462,7 +461,7 @@ function createPedestals(projects) {
             function (font) {
                 const linkTextGeometry = new THREE.TextGeometry('Link', {
                     font: font,
-                    size: 0.2,  // Size of the text
+                    size: 0.3,  // Size of the text
                     height: 0.01,  // Thickness of the text
                     curveSegments: 12,  // Increase for smoother curves
                 });
@@ -674,8 +673,6 @@ function handleInteraction() {
     }
 }
 
-
-
 // Enter testimonial mode
 let testimonialTextField;
 function enterTestimonialMode() {
@@ -687,6 +684,9 @@ function enterTestimonialMode() {
     inTestimonialMode = true;
     console.log('Entering testimonial mode...');
 
+    // Add event listener to capture input only in testimonial mode
+    document.addEventListener('keydown', handleTextInput, false);
+
     // Create a text input field on the ground
     const inputFieldGeometry = new THREE.PlaneGeometry(3, 1);
     const inputFieldMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff, opacity: 0.8, transparent: true });
@@ -695,8 +695,33 @@ function enterTestimonialMode() {
     testimonialTextField.rotation.x = -Math.PI / 2;
     scene.add(testimonialTextField);
 
-    // Focus the browser to capture input
-    document.addEventListener('keypress', handleTextInput);
+    // Load the font and create the text mesh for displaying testimonial text
+    const loader = new THREE.FontLoader();
+    loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', (font) => {
+        const projectName = projectNameEntries.find(entry => entry.projectId === selectedProjectId)?.mesh.userData.title || 'Unknown Project';
+        const projectNameGeometry = new THREE.TextGeometry(projectName, {
+            font: font,
+            size: 0.3,
+            height: 0.01,
+            curveSegments: 12,
+        });
+        const projectNameMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
+        projectNameTextMesh = new THREE.Mesh(projectNameGeometry, projectNameMaterial);
+        projectNameTextMesh.position.set(addTestimonialBox.position.x - 1.5, 0.1, addTestimonialBox.position.z - 1.5);
+        projectNameTextMesh.rotation.set(-Math.PI / 2, 0, 0);
+        scene.add(projectNameTextMesh);
+
+        const testimonialGeometry = new THREE.TextGeometry('', {
+            font: font,
+            size: 0.3,
+            height: 0.01,
+            curveSegments: 12,
+        });
+        testimonialDisplayTextMesh = new THREE.Mesh(testimonialGeometry, projectNameMaterial);
+        testimonialDisplayTextMesh.position.set(addTestimonialBox.position.x - 1.5, 0.1, addTestimonialBox.position.z - 2);
+        testimonialDisplayTextMesh.rotation.set(-Math.PI / 2, 0, 0);
+        scene.add(testimonialDisplayTextMesh);
+    });
 }
 
 // Submit the testimonial to the backend
@@ -729,13 +754,27 @@ function submitTestimonial(text) {
 function exitTestimonialMode() {
     inTestimonialMode = false;
     testimonialText = '';
-    scene.remove(testimonialTextField);
-    document.removeEventListener('keypress', handleTextInput);
+    scene.remove(testimonialTextField, testimonialDisplayTextMesh, projectNameTextMesh);
+
+    // Ensure we remove the event listener to prevent further text input
+    document.removeEventListener('keydown', handleTextInput, false);
+    console.log("Exited testimonial mode and removed keydown listener");
 }
+
 
 // Handle text input for the testimonial
 let testimonialText = '';
 function handleTextInput(event) {
+    // Check if inTestimonialMode is true to process input
+    if (!inTestimonialMode) return;
+
+    // Exit testimonial mode if Escape is pressed
+    if (event.key === 'Escape') {
+        exitTestimonialMode();
+        return;
+    }
+
+    // Process other keys for input
     if (event.key === 'Enter') {
         if (testimonialText.trim() === '') {
             console.error('Cannot submit an empty testimonial.');
@@ -746,11 +785,27 @@ function handleTextInput(event) {
         exitTestimonialMode();
     } else if (event.key === 'Backspace') {
         testimonialText = testimonialText.slice(0, -1);
-    } else {
+    } else if (event.key.length === 1) {
         testimonialText += event.key;
     }
     console.log('Current testimonial text:', testimonialText);
+
+    // Update the testimonial text display
+    if (testimonialDisplayTextMesh) {
+        const loader = new THREE.FontLoader();
+        loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', (font) => {
+            const updatedGeometry = new THREE.TextGeometry(testimonialText, {
+                font: font,
+                size: 0.3,
+                height: 0.01,
+                curveSegments: 12,
+            });
+            testimonialDisplayTextMesh.geometry.dispose();  // Clean up old geometry
+            testimonialDisplayTextMesh.geometry = updatedGeometry;
+        });
+    }
 }
+
 
 // Load testimonials and display them
 function loadTestimonials() {
@@ -761,25 +816,45 @@ function loadTestimonials() {
 
             if (Array.isArray(testimonials)) {
                 testimonials.forEach((testimonial, index) => {
-                    const loader = new THREE.FontLoader();
-                    loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
-                        const textGeometry = new THREE.TextGeometry(testimonial.content, {
-                            font: font,
-                            size: 0.2,
-                            height: 0.01,
-                            curveSegments: 12,
+                    const projectId = testimonial.projectId;
+
+                    // Find the associated pedestal for this project
+                    const associatedPedestal = pedestals.find(pedestal => pedestal.userData.projectId === projectId);
+
+                    if (associatedPedestal) {
+                        const loader = new THREE.FontLoader();
+                        loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+                            // Create geometry and material for testimonial text
+                            const textGeometry = new THREE.TextGeometry(testimonial.content, {
+                                font: font,
+                                size: 0.3,
+                                height: 0.01,
+                                curveSegments: 12,
+                            });
+                            const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
+                            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+
+                            // Position the testimonial text to the right of the pedestal's interaction box
+                            const interactionBox = interactionBoxes.find(box => box.mesh.userData.url === associatedPedestal.userData.projectUrl);
+                            if (interactionBox) {
+                                textMesh.position.set(
+                                    interactionBox.mesh.position.x + 1.5,  // Offset to the right of the box
+                                    0.01,
+                                    interactionBox.mesh.position.z - (index * 0.4)  // Stack testimonials vertically for this project
+                                );
+                                textMesh.rotation.set(-Math.PI / 2, 0, 0);
+                                scene.add(textMesh);
+                            }
                         });
-                        const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
-                        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-                        textMesh.position.set(-5, 0.01, 10 - (index * 1.5));  // Stack testimonials vertically
-                        textMesh.rotation.set(-Math.PI / 2, 0, 0);
-                        scene.add(textMesh);
-                    });
+                    } else {
+                        console.error(`No pedestal found for project ID ${projectId}`);
+                    }
                 });
             } else {
                 console.error('Expected an array but received:', testimonials);
             }
-        }).catch(error => {
+        })
+        .catch(error => {
             console.error('Error loading testimonials:', error);
         });
 }
