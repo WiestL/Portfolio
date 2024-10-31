@@ -57,8 +57,6 @@ function init() {
     // Set up keyboard controls for character movement
     document.addEventListener('keydown', onKeyDown, false);
     document.addEventListener('keyup', onKeyUp, false);
-    // Start the animation loop
-    animate();
 }
 
 // Function to create the character (a small cube)
@@ -152,10 +150,15 @@ let interactionBoxes = []; // Array to store interaction boxes
 let projectInteractionBoxes = []; // Array to store project interaction boxes
 let selectedProjectId = null; // Store the selected project ID
 let dropdownOpen = false; // Track if the dropdown is open
-
+let projectNameEntries = [];
+let selectedProjectMesh = null;
 async function createProjectDropdown() {
     const dropdownGeometry = new THREE.PlaneGeometry(3, 1);
-    const dropdownMaterial = new THREE.MeshLambertMaterial({ color: 0x0000ff, opacity: 0.5, transparent: true });
+    const dropdownMaterial = new THREE.MeshLambertMaterial({
+        color: 0x0000ff,
+        opacity: 0.5,
+        transparent: true,
+    });
     projectDropdown = new THREE.Mesh(dropdownGeometry, dropdownMaterial);
     projectDropdown.position.set(10, 0.001, 5); // Position next to the testimonial box
     projectDropdown.rotation.x = -Math.PI / 2;
@@ -164,67 +167,111 @@ async function createProjectDropdown() {
     // Add interaction box for the dropdown
     const dropdownBox = new THREE.Box3().setFromObject(projectDropdown);
     if (dropdownBox) {
-        interactionBoxes.push({ box: dropdownBox, type: 'dropdown', mesh: projectDropdown });
+        interactionBoxes.push({
+            box: dropdownBox,
+            type: 'dropdown',
+            mesh: projectDropdown,
+        });
     } else {
         console.error('Failed to create interaction box for dropdown');
     }
 
-    // Add label text for dropdown
-    const loader = new THREE.FontLoader();
+    // Load the font before proceeding
+    let font;
+    try {
+        font = await new Promise((resolve, reject) => {
+            const loader = new THREE.FontLoader();
+            loader.load(
+                'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+                (loadedFont) => {
+                    resolve(loadedFont);
+                },
+                undefined,
+                (error) => {
+                    reject(error);
+                }
+            );
+        });
+    } catch (error) {
+        console.error('Error loading font:', error);
+        return; // Exit the function if the font can't be loaded
+    }
 
-    loader.load(
-        'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
-        function (font) {
-            const textGeometry = new THREE.TextGeometry('Select Project', {
-                font: font,
-                size: 0.3,
-                height: 0.01,
-                curveSegments: 12,
-            });
-            const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
-            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-            textMesh.position.set(projectDropdown.position.x - 1.4, 0.02, projectDropdown.position.z);
-            textMesh.rotation.set(-Math.PI / 2, 0, 0);
-            scene.add(textMesh);
-        },
-        undefined,
-        function (error) {
-            console.error('An error occurred while loading the font:', error);
-        }
-    );
+    // Add label text for dropdown using the loaded font
+    const textGeometry = new THREE.TextGeometry('Select Project', {
+        font: font,
+        size: 0.3,
+        height: 0.01,
+        curveSegments: 12,
+    });
+    const textMaterial = new THREE.MeshPhongMaterial({
+        color: 0x000000,
+        shininess: 100,
+    });
+    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+    textMesh.position.set(projectDropdown.position.x - 1.4, 0.02, projectDropdown.position.z);
+    textMesh.rotation.set(-Math.PI / 2, 0, 0);
+    scene.add(textMesh);
 
     // Fetch projects from the backend
     try {
         const response = await fetch('/api/projectsAPI');
         const result = await response.json();
         const projects = result.$values || result; // Handle both wrapped and plain array
+        console.log('Fetched projects:', projects);
 
         // Create and position each project name as an interaction element in the dropdown
         if (projects && Array.isArray(projects)) {
             projects.forEach((project, index) => {
-                loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
-                    const textGeometry = new THREE.TextGeometry(project.projectName || '', {
-                        font: font,
-                        size: 0.2,
-                        height: 0.01,
-                        curveSegments: 12,
-                    });
-                    const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
-                    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-                    textMesh.position.set(7, 0.01, 4.5 - (index * 0.4)); // Position each option below the previous one
-                    textMesh.rotation.set(-Math.PI / 2, 0, 0);
-                    textMesh.userData = { projectId: project.projectId }; // Store the project ID for later use
-                    scene.add(textMesh);
-
-                    // Add interaction box for each project
-                    const projectBox = new THREE.Box3().setFromObject(textMesh);
-                    if (projectBox) {
-                        projectInteractionBoxes.push({ box: projectBox, projectId: project.projectId });
-                    } else {
-                        console.error('Failed to create interaction box for project:', project.projectName);
-                    }
+                const projectTextGeometry = new THREE.TextGeometry(project.title || '', {
+                    font: font, // Use the loaded font here
+                    size: 0.2,
+                    height: 0.01,
+                    curveSegments: 12,
                 });
+                const projectTextMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x000000,
+                    shininess: 100,
+                });
+                const projectTextMesh = new THREE.Mesh(projectTextGeometry, projectTextMaterial);
+
+                // Position each option relative to the dropdown box
+                const dropdownPosition = projectDropdown.position;
+                projectTextMesh.position.set(
+                    dropdownPosition.x - 1.5,
+                    0.1, // Raise it slightly above the floor
+                    dropdownPosition.z - index * 0.4 - 1
+                );
+                projectTextMesh.rotation.set(-Math.PI / 2, 0, 0);
+
+                // Set the visibility to false initially
+                projectTextMesh.visible = false;
+
+                // Store the project name in userData for debugging
+                projectTextMesh.userData.title = project.title || '';
+
+                scene.add(projectTextMesh);
+
+                // Add interaction box for each project
+                const projectBox = new THREE.Box3().setFromObject(projectTextMesh);
+                if (projectBox) {
+                    projectInteractionBoxes.push({
+                        box: projectBox,
+                        projectId: project.projectId,
+                        mesh: projectTextMesh,
+                    });
+                    projectNameEntries.push({
+                        mesh: projectTextMesh,
+                        box: projectBox,
+                        projectId: project.projectId,
+                    });
+                } else {
+                    console.error('Failed to create interaction box for project:', project.title);
+                }
+
+                console.log(`Created project name for project ID ${project.projectId}:`, project.title);
             });
+
         } else {
             console.error('Expected an array but received:', projects);
         }
@@ -232,6 +279,7 @@ async function createProjectDropdown() {
         console.error('Error loading projects:', error);
     }
 }
+
 
 // Handle window resizing
 function onWindowResize() {
@@ -539,19 +587,12 @@ function handleInteraction() {
             if (interactionBoxEntry.type === 'dropdown') {
                 console.log('Character is on the project dropdown.');
                 dropdownOpen = !dropdownOpen; // Toggle dropdown open state
-                return;
-            } else if (interactionBoxEntry.type === 'testimonial') {
-                console.log('Character is on the add testimonial box.');
-                enterTestimonialMode();
-                return;
-            } else if (interactionBoxEntry.type === 'link') {
-                // Open the URL in a new tab
-                const url = interactionBoxEntry.url;
-                if (url) {
-                    window.open(url, '_blank');
-                    console.log(`Opening URL: ${url}`);
-                } else {
-                    console.error('No URL assigned to this interaction box.');
+                console.log(`Dropdown is now ${dropdownOpen ? 'open' : 'closed'}.`);
+
+                // Show or hide the project names
+                for (let j = 0; j < projectNameEntries.length; j++) {
+                    projectNameEntries[j].mesh.visible = dropdownOpen;
+                    console.log(`Setting visibility of project '${projectNameEntries[j].mesh.userData.title}' to ${dropdownOpen}`);
                 }
                 return;
             }
@@ -559,16 +600,47 @@ function handleInteraction() {
     }
 
     if (dropdownOpen) {
-        for (let i = 0; i < projectInteractionBoxes.length; i++) {
-            const projectBox = projectInteractionBoxes[i];
-            if (characterBox.intersectsBox(projectBox.box)) {
-                selectedProjectId = projectBox.projectId;
+        if (projectNameEntries.length === 0) {
+            console.warn('Project names are not loaded yet.');
+            return;
+        }
+
+        let projectSelected = false;
+        for (let i = 0; i < projectNameEntries.length; i++) {
+            const projectEntry = projectNameEntries[i];
+            projectEntry.box.setFromObject(projectEntry.mesh); // Update bounding box
+
+            if (characterBox.intersectsBox(projectEntry.box)) {
+                selectedProjectId = projectEntry.projectId;
                 console.log('Selected project ID:', selectedProjectId);
-                enterTestimonialMode();
-                return;
+
+                // Reset color of previous selection
+                if (selectedProjectMesh) {
+                    selectedProjectMesh.material.color.set(0x000000);
+                }
+
+                // Set color of new selection
+                selectedProjectMesh = projectEntry.mesh;
+                selectedProjectMesh.material.color.set(0xff0000); // Change color to red
+
+                // Close the dropdown and hide project names
+                dropdownOpen = false;
+                for (let j = 0; j < projectNameEntries.length; j++) {
+                    projectNameEntries[j].mesh.visible = false;
+                }
+
+                projectSelected = true;
+                break;
             }
         }
+
+        if (!projectSelected) {
+            console.log('Character is not over any project name.');
+        }
+
+        return;
     }
+
 
     if (!foundInteraction) {
         console.log("Character is not on any interaction box.");
@@ -578,6 +650,11 @@ function handleInteraction() {
 // Enter testimonial mode
 let testimonialTextField;
 function enterTestimonialMode() {
+    if (!selectedProjectId) {
+        console.error('No project selected. Please select a project from the dropdown first.');
+        return;
+    }
+
     inTestimonialMode = true;
     console.log('Entering testimonial mode...');
 
@@ -595,12 +672,16 @@ function enterTestimonialMode() {
 
 // Submit the testimonial to the backend
 function submitTestimonial(text) {
+    if (!selectedProjectId) {
+        console.error('No project selected. Cannot submit testimonial.');
+        return;
+    }
     fetch('/api/testimonialsAPI', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ content: text, authorName: "Anonymous", projectId: selectedProjectId || 2 })
+        body: JSON.stringify({ content: text, authorName: "Anonymous", projectId: selectedProjectId })
     }).then(response => {
         if (response.ok) {
             console.log('Testimonial added successfully');
@@ -683,10 +764,13 @@ function animate() {
 }
 
 // Start the scene once the window has loaded
-window.onload = function () {
+window.onload = async function () {
     init();
     // Create project dropdown next to testimonial
-    createProjectDropdown();
+    await createProjectDropdown();
 
     loadTestimonials();
+
+    // Start the animation loop
+    animate();
 };
