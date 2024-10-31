@@ -576,29 +576,6 @@ function handleInteraction() {
 
     console.log("Checking interaction...");
 
-    // Check if the character is standing on any interaction box
-    let foundInteraction = false;
-    for (let i = 0; i < interactionBoxes.length; i++) {
-        const interactionBoxEntry = interactionBoxes[i];
-        const interactionBox = interactionBoxEntry.box;
-
-        if (characterBox.intersectsBox(interactionBox)) {
-            foundInteraction = true;
-            if (interactionBoxEntry.type === 'dropdown') {
-                console.log('Character is on the project dropdown.');
-                dropdownOpen = !dropdownOpen; // Toggle dropdown open state
-                console.log(`Dropdown is now ${dropdownOpen ? 'open' : 'closed'}.`);
-
-                // Show or hide the project names
-                for (let j = 0; j < projectNameEntries.length; j++) {
-                    projectNameEntries[j].mesh.visible = dropdownOpen;
-                    console.log(`Setting visibility of project '${projectNameEntries[j].mesh.userData.title}' to ${dropdownOpen}`);
-                }
-                return;
-            }
-        }
-    }
-
     if (dropdownOpen) {
         if (projectNameEntries.length === 0) {
             console.warn('Project names are not loaded yet.');
@@ -609,6 +586,12 @@ function handleInteraction() {
         for (let i = 0; i < projectNameEntries.length; i++) {
             const projectEntry = projectNameEntries[i];
             projectEntry.box.setFromObject(projectEntry.mesh); // Update bounding box
+
+            // Log positions and bounding boxes for debugging
+            console.log(`Checking project '${projectEntry.mesh.userData.title}' at index ${i}`);
+            console.log('Character position:', character.position);
+            console.log('Character bounding box:', characterBox);
+            console.log('Project bounding box:', projectEntry.box);
 
             if (characterBox.intersectsBox(projectEntry.box)) {
                 selectedProjectId = projectEntry.projectId;
@@ -631,6 +614,8 @@ function handleInteraction() {
 
                 projectSelected = true;
                 break;
+            } else {
+                console.log(`Character is not intersecting with project '${projectEntry.mesh.userData.title}'.`);
             }
         }
 
@@ -641,11 +626,55 @@ function handleInteraction() {
         return;
     }
 
+    // Check for interactions with other boxes
+    let foundInteraction = false;
+    for (let i = 0; i < interactionBoxes.length; i++) {
+        const interactionBoxEntry = interactionBoxes[i];
+        const interactionBox = interactionBoxEntry.box;
+
+        if (characterBox.intersectsBox(interactionBox)) {
+            foundInteraction = true;
+
+            if (interactionBoxEntry.type === 'dropdown') {
+                console.log('Character is on the project dropdown.');
+                dropdownOpen = !dropdownOpen; // Toggle dropdown open state
+                console.log(`Dropdown is now ${dropdownOpen ? 'open' : 'closed'}.`);
+
+                // Show or hide the project names
+                for (let j = 0; j < projectNameEntries.length; j++) {
+                    projectNameEntries[j].mesh.visible = dropdownOpen;
+                    console.log(`Setting visibility of project '${projectNameEntries[j].mesh.userData.title}' to ${dropdownOpen}`);
+                }
+                return;
+
+            } else if (interactionBoxEntry.type === 'testimonial') {
+                console.log('Character is on the add testimonial box.');
+                if (selectedProjectId) {
+                    enterTestimonialMode();
+                } else {
+                    console.error('No project selected. Please select a project from the dropdown first.');
+                }
+                return;
+
+            } else if (interactionBoxEntry.type === 'link') {
+                const url = interactionBoxEntry.url;
+                if (url) {
+                    window.open(url, '_blank');
+                    console.log(`Opening URL: ${url}`);
+                } else {
+                    console.error('No URL assigned to this interaction box.');
+                }
+                return;
+            }
+        }
+    }
 
     if (!foundInteraction) {
         console.log("Character is not on any interaction box.");
     }
 }
+
+
 
 // Enter testimonial mode
 let testimonialTextField;
