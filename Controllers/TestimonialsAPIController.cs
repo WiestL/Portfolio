@@ -20,9 +20,26 @@ namespace ProjectPortfolio.Controllers
         [HttpGet]
         public async Task<IActionResult> GetTestimonials()
         {
-            var testimonials = await _context.Testimonials.ToListAsync();
-            return Ok(testimonials);
+            try
+            {
+                var testimonials = await _context.Testimonials
+                    .Select(t => new
+                    {
+                        t.TestimonialId,
+                        t.Content,
+                        t.AuthorName,
+                        t.ProjectId
+                    })
+                    .ToListAsync();
+                return Ok(testimonials);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching testimonials: {ex.Message}");
+                return StatusCode(500, "Internal server error while fetching testimonials.");
+            }
         }
+
 
         // GET: api/Testimonials/5
         [HttpGet("{id}")]
@@ -48,10 +65,20 @@ namespace ProjectPortfolio.Controllers
             }
 
             _context.Testimonials.Add(testimonial);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving testimonial: {ex.InnerException?.Message}");
+                return StatusCode(500, "Internal server error");
+            }
+
 
             return CreatedAtAction(nameof(GetTestimonial), new { id = testimonial.TestimonialId }, testimonial);
         }
+
 
         // PUT: api/Testimonials/5
         [HttpPut("{id}")]

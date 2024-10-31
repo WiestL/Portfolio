@@ -10,6 +10,7 @@
         // Foreign Key
         public int ProjectId { get; set; }
 
+        
         // Navigation Properties
         public Project? Project { get; set; }
     }

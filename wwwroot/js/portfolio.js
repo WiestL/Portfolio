@@ -6,7 +6,6 @@ let raycaster;
 let inTestimonialMode = false;  // Track whether user is in testimonial mode
 const proximityDistance = 2;  // The proximity distance in front of the pedestal
 let intersectedPedestal = null;  // Track the current pedestal in proximity
-let projectDropdown; // Dropdown for selecting project
 
 // Initialize the scene
 function init() {
@@ -122,6 +121,14 @@ function createAddTestimonialBox() {
     addTestimonialBox.userData = { isTestimonialBox: true };
     scene.add(addTestimonialBox);
 
+    // Create bounding box and add to interactionBoxes
+    const testimonialBox3 = new THREE.Box3().setFromObject(addTestimonialBox);
+    interactionBoxes.push({
+        box: testimonialBox3,
+        type: 'testimonial',
+        mesh: addTestimonialBox
+    });
+
     // Add label text
     const loader = new THREE.FontLoader();
     loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
@@ -139,32 +146,92 @@ function createAddTestimonialBox() {
     });
 }
 
-// Create project dropdown box
-function createProjectDropdown() {
+// Create project dropdown
+let projectDropdown; // Dropdown for selecting project
+let interactionBoxes = []; // Array to store interaction boxes
+let projectInteractionBoxes = []; // Array to store project interaction boxes
+let selectedProjectId = null; // Store the selected project ID
+let dropdownOpen = false; // Track if the dropdown is open
+
+async function createProjectDropdown() {
     const dropdownGeometry = new THREE.PlaneGeometry(3, 1);
     const dropdownMaterial = new THREE.MeshLambertMaterial({ color: 0x0000ff, opacity: 0.5, transparent: true });
     projectDropdown = new THREE.Mesh(dropdownGeometry, dropdownMaterial);
-    projectDropdown.position.set(7, 0.001, 5);  // Position next to the testimonial box
+    projectDropdown.position.set(10, 0.001, 5); // Position next to the testimonial box
     projectDropdown.rotation.x = -Math.PI / 2;
     scene.add(projectDropdown);
 
+    // Add interaction box for the dropdown
+    const dropdownBox = new THREE.Box3().setFromObject(projectDropdown);
+    if (dropdownBox) {
+        interactionBoxes.push({ box: dropdownBox, type: 'dropdown', mesh: projectDropdown });
+    } else {
+        console.error('Failed to create interaction box for dropdown');
+    }
+
     // Add label text for dropdown
     const loader = new THREE.FontLoader();
-    loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
-        const textGeometry = new THREE.TextGeometry('Select Project', {
-            font: font,
-            size: 0.3,
-            height: 0.01,
-            curveSegments: 12,
-        });
-        const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
-        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-        textMesh.position.set(projectDropdown.position.x - 1.4, 0.02, projectDropdown.position.z);
-        textMesh.rotation.set(-Math.PI / 2, 0, 0);
-        scene.add(textMesh);
-    });
-}
 
+    loader.load(
+        'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+        function (font) {
+            const textGeometry = new THREE.TextGeometry('Select Project', {
+                font: font,
+                size: 0.3,
+                height: 0.01,
+                curveSegments: 12,
+            });
+            const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
+            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+            textMesh.position.set(projectDropdown.position.x - 1.4, 0.02, projectDropdown.position.z);
+            textMesh.rotation.set(-Math.PI / 2, 0, 0);
+            scene.add(textMesh);
+        },
+        undefined,
+        function (error) {
+            console.error('An error occurred while loading the font:', error);
+        }
+    );
+
+    // Fetch projects from the backend
+    try {
+        const response = await fetch('/api/projectsAPI');
+        const result = await response.json();
+        const projects = result.$values || result; // Handle both wrapped and plain array
+
+        // Create and position each project name as an interaction element in the dropdown
+        if (projects && Array.isArray(projects)) {
+            projects.forEach((project, index) => {
+                loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+                    const textGeometry = new THREE.TextGeometry(project.projectName || '', {
+                        font: font,
+                        size: 0.2,
+                        height: 0.01,
+                        curveSegments: 12,
+                    });
+                    const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
+                    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                    textMesh.position.set(7, 0.01, 4.5 - (index * 0.4)); // Position each option below the previous one
+                    textMesh.rotation.set(-Math.PI / 2, 0, 0);
+                    textMesh.userData = { projectId: project.projectId }; // Store the project ID for later use
+                    scene.add(textMesh);
+
+                    // Add interaction box for each project
+                    const projectBox = new THREE.Box3().setFromObject(textMesh);
+                    if (projectBox) {
+                        projectInteractionBoxes.push({ box: projectBox, projectId: project.projectId });
+                    } else {
+                        console.error('Failed to create interaction box for project:', project.projectName);
+                    }
+                });
+            });
+        } else {
+            console.error('Expected an array but received:', projects);
+        }
+    } catch (error) {
+        console.error('Error loading projects:', error);
+    }
+}
 
 // Handle window resizing
 function onWindowResize() {
@@ -207,7 +274,6 @@ function onKeyUp(event) {
 // Update the character's movement
 let characterBox = new THREE.Box3();
 
-// Update the character's movement
 function updateMovement() {
     if (inTestimonialMode) return;  // Disable movement when in testimonial mode
 
@@ -245,9 +311,17 @@ function updateMovement() {
 
     // Allow walking over interaction boxes
     for (let i = 0; i < interactionBoxes.length; i++) {
-        if (characterBox.intersectsBox(new THREE.Box3().setFromObject(interactionBoxes[i]))) {
-            // Character is on an interaction box, but it should not be blocked
-            isCollision = false;
+        const interactionBoxEntry = interactionBoxes[i];
+        const interactionBox = interactionBoxEntry.box;
+
+        if (interactionBox && interactionBox.isBox3) {
+            if (characterBox.intersectsBox(interactionBox)) {
+                // Character is on an interaction box, but it should not be blocked
+                isCollision = false;
+                break; // Stop checking after finding an interaction
+            }
+        } else {
+            console.error('Invalid interaction box:', interactionBox);
         }
     }
 
@@ -261,16 +335,21 @@ function updateMovement() {
     camera.lookAt(character.position);
 }
 
-
 async function fetchProjectsAndCreatePedestals() {
     try {
         const response = await fetch('/api/projectsAPI');
         if (!response.ok) {
-            throw new Error(`Failed to fetch projects: ${response.status} ${response.statusText}. Please ensure the endpoint is correct and available.`);
-        }  // Assuming a RESTful API endpoint to fetch projects
-        const text = await response.text();
-        const projects = text ? JSON.parse(text) : [];
-        createPedestals(projects);
+            throw new Error(`Failed to fetch projects: ${response.status} ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        const projects = result.$values || result; // Handle both wrapped and plain array
+
+        if (Array.isArray(projects)) {
+            createPedestals(projects);
+        } else {
+            console.error('Expected an array but received:', projects);
+        }
     } catch (error) {
         console.error('Error fetching projects:', error);
     }
@@ -279,7 +358,6 @@ async function fetchProjectsAndCreatePedestals() {
 let pedestals = [];
 let pedestalBoxes = [];  // For collision detection with the character
 let pedestalTouched = [];  // To track if the pedestal has already triggered
-let interactionBoxes = [];  // Array to store interaction boxes
 
 function createPedestals(projects) {
     const pedestalGeometry = new THREE.BoxGeometry(1, 1, 1);  // Cube geometry for the pedestal
@@ -303,23 +381,31 @@ function createPedestals(projects) {
         // Create a flat interaction box on the ground next to the pedestal
         const interactionBoxGeometry = new THREE.PlaneGeometry(1, 1);  // Plane geometry for the interaction box
         const interactionBoxMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000, opacity: 0.5, transparent: true });
-        const interactionBox = new THREE.Mesh(interactionBoxGeometry, interactionBoxMaterial);
-        interactionBox.position.set(pedestal.position.x + 1.5, 0.001, pedestal.position.z);  // Slightly above the ground to avoid z-fighting
-        interactionBox.rotation.x = -Math.PI / 2;  // Lay flat on the ground
+        const interactionBoxMesh = new THREE.Mesh(interactionBoxGeometry, interactionBoxMaterial);
+        interactionBoxMesh.position.set(pedestal.position.x + 1.5, 0.001, pedestal.position.z);  // Slightly above the ground to avoid z-fighting
+        interactionBoxMesh.rotation.x = -Math.PI / 2;  // Lay flat on the ground
+
         // Assign the project URL to interaction box userData if it exists
         if (project.projectUrl) {
-            interactionBox.userData = { url: project.projectUrl };
+            interactionBoxMesh.userData = { url: project.projectUrl };
             console.log(`Assigned URL: ${project.projectUrl} to interaction box at index ${index}`);
         } else {
-            interactionBox.userData = { url: undefined };
+            interactionBoxMesh.userData = { url: undefined };
             console.log(`URL could not be assigned`);
         }
-        scene.add(interactionBox);
-        interactionBoxes.push(interactionBox);  // Store interaction boxes separately
+        scene.add(interactionBoxMesh);
+
+        // Create bounding box and add to interactionBoxes
+        const interactionBox3 = new THREE.Box3().setFromObject(interactionBoxMesh);
+        interactionBoxes.push({
+            box: interactionBox3,
+            type: 'link',
+            mesh: interactionBoxMesh,
+            url: project.projectUrl
+        });
 
         // Logging for debugging
-        console.log(`Interaction box created at position: ${interactionBox.position.x}, ${interactionBox.position.y}, ${interactionBox.position.z}`);
-
+        console.log(`Interaction box created at position: ${interactionBoxMesh.position.x}, ${interactionBoxMesh.position.y}, ${interactionBoxMesh.position.z}`);
 
         // Add "Link" text on the interaction box
         const loader = new THREE.FontLoader();
@@ -335,7 +421,7 @@ function createPedestals(projects) {
 
                 const linkTextMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
                 const linkTextMesh = new THREE.Mesh(linkTextGeometry, linkTextMaterial);
-                linkTextMesh.position.set(interactionBox.position.x - 0.3, 0.01, interactionBox.position.z);
+                linkTextMesh.position.set(interactionBoxMesh.position.x - 0.3, 0.01, interactionBoxMesh.position.z);
                 linkTextMesh.rotation.set(-Math.PI / 2, 0, 0);  // Rotate to lay flat on the interaction box
 
                 scene.add(linkTextMesh);
@@ -346,18 +432,6 @@ function createPedestals(projects) {
             }
         );
     });
-}
-
-function handleInteraction() {
-    characterBox.setFromObject(character);  // Update character's bounding box
-    for (let i = 0; i < pedestalBoxes.length; i++) {
-        if (characterBox.intersectsBox(pedestalBoxes[i])) {
-            const object = pedestals[i];
-            if (object.userData && object.userData.url) {
-                window.open(object.userData.url, '_blank');  // Open the project link in a new tab
-            }
-        }
-    }
 }
 
 function checkProximityToPedestals() {
@@ -445,58 +519,9 @@ function createTextMeshes(font, project, pedestal) {
 
     // Add the description to the scene
     scene.add(descriptionMesh);
-
-    // Create a clickable box (hitbox) for interaction
-    const linkGeometry = new THREE.PlaneGeometry(3, 1); // Adjust the size for appropriate clickable area
-    const linkMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0, transparent: true }); // Invisible plane
-    const linkMesh = new THREE.Mesh(linkGeometry, linkMaterial);
-
-    // Position the clickable box just above the project text
-    linkMesh.position.set(pedestal.position.x + 0.7, 0.2, pedestal.position.z + 2);
-    linkMesh.rotation.set(-Math.PI / 2, 0, Math.PI / 4); // Match with the text position
-
-    // Store the project URL for linking purposes
-    linkMesh.userData = { url: project.url };
-    scene.add(linkMesh);
-
-    // Add to clickable objects array
-    clickableObjects.push(linkMesh);
 }
 
-const clickableObjects = []; // Store clickable objects for raycasting
-
-// Raycast to detect clicks on link boxes
-document.addEventListener('mousedown', onDocumentMouseDown, false);
-
-function onDocumentMouseDown(event) {
-    // Calculate mouse position in normalized device coordinates
-    const mouse = new THREE.Vector2(
-        (event.clientX / window.innerWidth) * 2 - 1,
-        -(event.clientY / window.innerHeight) * 2 + 1
-    );
-
-    raycaster.setFromCamera(mouse, camera);
-
-    // Determine if any clickable object is intersected
-    const intersects = raycaster.intersectObjects(clickableObjects);
-
-    if (intersects.length > 0) {
-        const clickedObject = intersects[0].object;
-        if (clickedObject.userData && clickedObject.userData.url) {
-            window.open(clickedObject.userData.url, '_blank'); // Open the project link in a new tab
-        }
-    }
-}
-
-
-// Animation loop to render the scene and update the movement
-function animate() {
-    requestAnimationFrame(animate);
-    updateMovement();  // Update character movement
-    checkProximityToPedestals();  // Check proximity to pedestals
-    renderer.render(scene, camera);
-}
-
+// Handle interactions when the 'Enter' key is pressed
 function handleInteraction() {
     // Update the character's bounding box
     characterBox.setFromObject(character);
@@ -506,20 +531,41 @@ function handleInteraction() {
     // Check if the character is standing on any interaction box
     let foundInteraction = false;
     for (let i = 0; i < interactionBoxes.length; i++) {
-        const interactionBox = interactionBoxes[i];
-        const interactionBoxBounds = new THREE.Box3().setFromObject(interactionBox);
-        if (characterBox.intersectsBox(new THREE.Box3().setFromObject(addTestimonialBox))) {
-            console.log('Character is on the add testimonial box.');
-            enterTestimonialMode();
-        }
-        if (characterBox.intersectsBox(interactionBoxBounds)) {
-            foundInteraction = true;
-            console.log(`Character is on interaction box: ${interactionBox.userData.url}`);
+        const interactionBoxEntry = interactionBoxes[i];
+        const interactionBox = interactionBoxEntry.box;
 
-            // If the character is standing on the interaction box, open the associated link
-            if (interactionBox.userData && interactionBox.userData.url) {
-                console.log(`Opening URL: ${interactionBox.userData.url}`);
-                window.open(interactionBox.userData.url, '_blank');  // Open the project link in a new tab
+        if (characterBox.intersectsBox(interactionBox)) {
+            foundInteraction = true;
+            if (interactionBoxEntry.type === 'dropdown') {
+                console.log('Character is on the project dropdown.');
+                dropdownOpen = !dropdownOpen; // Toggle dropdown open state
+                return;
+            } else if (interactionBoxEntry.type === 'testimonial') {
+                console.log('Character is on the add testimonial box.');
+                enterTestimonialMode();
+                return;
+            } else if (interactionBoxEntry.type === 'link') {
+                // Open the URL in a new tab
+                const url = interactionBoxEntry.url;
+                if (url) {
+                    window.open(url, '_blank');
+                    console.log(`Opening URL: ${url}`);
+                } else {
+                    console.error('No URL assigned to this interaction box.');
+                }
+                return;
+            }
+        }
+    }
+
+    if (dropdownOpen) {
+        for (let i = 0; i < projectInteractionBoxes.length; i++) {
+            const projectBox = projectInteractionBoxes[i];
+            if (characterBox.intersectsBox(projectBox.box)) {
+                selectedProjectId = projectBox.projectId;
+                console.log('Selected project ID:', selectedProjectId);
+                enterTestimonialMode();
+                return;
             }
         }
     }
@@ -530,6 +576,7 @@ function handleInteraction() {
 }
 
 // Enter testimonial mode
+let testimonialTextField;
 function enterTestimonialMode() {
     inTestimonialMode = true;
     console.log('Entering testimonial mode...');
@@ -553,7 +600,7 @@ function submitTestimonial(text) {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ content: text, authorName: "Anonymous", projectId: 1 })
+        body: JSON.stringify({ content: text, authorName: "Anonymous", projectId: selectedProjectId || 2 })
     }).then(response => {
         if (response.ok) {
             console.log('Testimonial added successfully');
@@ -567,9 +614,6 @@ function submitTestimonial(text) {
         console.error('Error submitting testimonial:', error);
     });
 }
-
-
-
 
 // Exit testimonial mode
 function exitTestimonialMode() {
@@ -602,26 +646,33 @@ function handleTextInput(event) {
 function loadTestimonials() {
     fetch('/api/testimonialsAPI')
         .then(response => response.json())
-        .then(testimonials => {
-            testimonials.forEach((testimonial, index) => {
-                const loader = new THREE.FontLoader();
-                loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
-                    const textGeometry = new THREE.TextGeometry(testimonial.content, {
-                        font: font,
-                        size: 0.2,
-                        height: 0.01,
-                        curveSegments: 12,
+        .then(result => {
+            const testimonials = result.$values || result; // Handle both wrapped and plain array
+
+            if (Array.isArray(testimonials)) {
+                testimonials.forEach((testimonial, index) => {
+                    const loader = new THREE.FontLoader();
+                    loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+                        const textGeometry = new THREE.TextGeometry(testimonial.content, {
+                            font: font,
+                            size: 0.2,
+                            height: 0.01,
+                            curveSegments: 12,
+                        });
+                        const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
+                        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                        textMesh.position.set(-5, 0.01, 10 - (index * 1.5));  // Stack testimonials vertically
+                        textMesh.rotation.set(-Math.PI / 2, 0, 0);
+                        scene.add(textMesh);
                     });
-                    const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
-                    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-                    textMesh.position.set(-5, 0.01, 10 - (index * 1.5));  // Stack testimonials vertically
-                    textMesh.rotation.set(-Math.PI / 2, 0, 0);
-                    scene.add(textMesh);
                 });
-            });
+            } else {
+                console.error('Expected an array but received:', testimonials);
+            }
+        }).catch(error => {
+            console.error('Error loading testimonials:', error);
         });
 }
-
 
 // Animation loop to render the scene and update the movement
 function animate() {
@@ -632,4 +683,10 @@ function animate() {
 }
 
 // Start the scene once the window has loaded
-window.onload = init;
+window.onload = function () {
+    init();
+    // Create project dropdown next to testimonial
+    createProjectDropdown();
+
+    loadTestimonials();
+};

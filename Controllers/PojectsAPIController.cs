@@ -18,6 +18,7 @@ namespace ProjectPortfolio.Controllers
         }
 
         // GET: api/Projects
+
         [HttpGet]
         public async Task<IActionResult> GetProjects()
         {
@@ -27,12 +28,18 @@ namespace ProjectPortfolio.Controllers
                     .Include(p => p.ProjectSkills)
                     .Include(p => p.ProjectCategories)
                     .Include(p => p.Testimonials)
+                    .Select(p => new
+                    {
+                        p.ProjectId,
+                        p.Title,
+                        p.Description,
+                        p.ProjectUrl
+                    })
                     .ToListAsync();
                 return Ok(projects);
             }
             catch (Exception ex)
             {
-                // Log the exception details
                 Console.WriteLine($"Error fetching projects: {ex.Message}");
                 return StatusCode(500, "Internal server error while fetching projects.");
             }
