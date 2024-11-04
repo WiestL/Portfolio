@@ -26,6 +26,8 @@ async function init() {
         createAddTestimonialBox();
         createProjectDropdown();
 
+        createControlInstructions();
+
         // Fetch projects and proceed after fetching
         const projects = await fetchProjectsAndCreatePedestals();
         const numProjects = projects.length;
@@ -87,6 +89,62 @@ function checkProximityToPedestals() {
         }
     }
 }
+
+function createControlInstructions() {
+    if (!cachedFont) {
+        console.error('Font not loaded yet.');
+        return;
+    }
+
+    const instructions = [
+        "- HAVE FUN",
+        "- Use W, A, S, D, or arrowkeys, to walk around",
+        "- Walk up to a project to see details",
+        "- Press Enter to interact with Link Boxes and Review Writing",
+        "Controls:"
+        
+    ];
+
+    const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, transparent: true, opacity: 0 });
+    let offsetZ = 0;
+    let instructionMeshes = [];
+
+    instructions.forEach((line, index) => {
+        const textGeometry = new THREE.TextGeometry(line, {
+            font: cachedFont,
+            size: 0.3,
+            height: 0.01,
+            curveSegments: 12,
+        });
+
+        const textMesh = new THREE.Mesh(textGeometry, textMaterial.clone()); // Clone material to independently control opacity
+        textMesh.position.set(-30, 0.1, 15 - offsetZ);
+        textMesh.rotation.set(-Math.PI / 2, 0, 0);
+        scene.add(textMesh);
+        instructionMeshes.push(textMesh);
+
+        offsetZ += 1; // Adjust this value for spacing between lines
+    });
+
+    // Animate the fading in of the instructions
+    let fadeInDuration = 2000; // Duration in milliseconds
+    let startTime = performance.now();
+
+    function fadeIn() {
+        let elapsed = performance.now() - startTime;
+        let progress = Math.min(elapsed / fadeInDuration, 1); // Cap progress at 1
+        instructionMeshes.forEach(mesh => {
+            mesh.material.opacity = progress; // Gradually increase opacity
+        });
+
+        if (progress < 1) {
+            requestAnimationFrame(fadeIn); // Continue until fully visible
+        }
+    }
+
+    fadeIn();
+}
+
 
 // Function to create the character (a small cube)
 function createCharacter() {
@@ -241,11 +299,16 @@ function createProjectDropdown() {
         const textMaterial = new THREE.MeshPhongMaterial({
             color: 0x000000,
             shininess: 100,
+            transparent: true,
+            opacity: 0, // Start with opacity 0 for fade-in effect
         });
         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
         textMesh.position.set(projectDropdown.position.x - 1.4, 0.02, projectDropdown.position.z);
         textMesh.rotation.set(-Math.PI / 2, 0, 0);
         scene.add(textMesh);
+
+        // Start fade-in effect for the label text
+        fadeInText([textMesh]);
 
         // Fetch projects from the backend
         fetch('/api/projectsAPI')
@@ -263,6 +326,8 @@ function createProjectDropdown() {
                         const projectTextMaterial = new THREE.MeshPhongMaterial({
                             color: 0x000000,
                             shininess: 100,
+                            transparent: true,
+                            opacity: 0, // Start with opacity 0 for fade-in effect
                         });
                         const projectTextMesh = new THREE.Mesh(projectTextGeometry, projectTextMaterial);
 
@@ -270,8 +335,8 @@ function createProjectDropdown() {
                         const dropdownPosition = projectDropdown.position;
                         projectTextMesh.position.set(
                             dropdownPosition.x - 1.5,
-                            0.1, // Raise it slightly above the floor
-                            dropdownPosition.z - index * 0.4 - 1
+                            0.1, // Slight elevation above the ground
+                            (dropdownPosition.z - index * 1) - 1 // Increase vertical spacing between options
                         );
                         projectTextMesh.rotation.set(-Math.PI / 2, 0, 0);
 
@@ -282,6 +347,9 @@ function createProjectDropdown() {
                         projectTextMesh.userData.title = project.title || '';
 
                         scene.add(projectTextMesh);
+
+                        // Start fade-in effect for each project text
+                        fadeInText([projectTextMesh]);
 
                         // Add interaction box for each project
                         const projectBox = new THREE.Box3().setFromObject(projectTextMesh);
@@ -305,6 +373,24 @@ function createProjectDropdown() {
     } else {
         console.error('Font not loaded yet.');
     }
+}
+
+function fadeInText(meshes) {
+    const duration = 1000; // Duration in milliseconds
+    const step = 16; // Step for requestAnimationFrame
+    const increment = step / duration;
+
+    let opacity = 0;
+    const interval = setInterval(() => {
+        opacity += increment;
+        if (opacity >= 1) {
+            opacity = 1;
+            clearInterval(interval);
+        }
+        meshes.forEach(mesh => {
+            mesh.material.opacity = opacity;
+        });
+    }, step);
 }
 
 // Handle window resizing
@@ -529,6 +615,7 @@ function createTextMeshes(font, project, pedestal) {
         console.error('Invalid project data:', project);
         return;
     }
+
     // Create 3D text for the project title
     const textGeometry = new THREE.TextGeometry(project.title, {
         font: font,
@@ -537,11 +624,11 @@ function createTextMeshes(font, project, pedestal) {
         curveSegments: 24,
     });
 
-    const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
+    const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100, transparent: true, opacity: 0 });
     const textMesh = new THREE.Mesh(textGeometry, textMaterial);
 
     // Position the text on the ground in front of the pedestal
-    textMesh.position.set(pedestal.position.x + 0.7, 0.1, pedestal.position.z + 2);
+    textMesh.position.set(pedestal.position.x - 3, 0, pedestal.position.z);
     textMesh.rotation.set(0, Math.PI / 4, 0);
 
     // Add the text to the scene
@@ -555,15 +642,39 @@ function createTextMeshes(font, project, pedestal) {
         curveSegments: 24,
     });
 
-    const descriptionMesh = new THREE.Mesh(descriptionGeometry, textMaterial);
+    const descriptionMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100, transparent: true, opacity: 0 });
+    const descriptionMesh = new THREE.Mesh(descriptionGeometry, descriptionMaterial);
 
     // Position the description below the title
-    descriptionMesh.position.set(pedestal.position.x, 0.1, pedestal.position.z + 4);
+    descriptionMesh.position.set(pedestal.position.x - 3.5, 0.7, pedestal.position.z);
     descriptionMesh.rotation.set(0, Math.PI / 4, 0);
 
     // Add the description to the scene
     scene.add(descriptionMesh);
+
+    // Start fade-in effect for both title and description
+    fadeInText([textMesh, descriptionMesh]);
 }
+
+function fadeInText(textMeshes) {
+    let fadeInDuration = 2000; // Duration in milliseconds
+    let startTime = performance.now();
+
+    function fadeIn() {
+        let elapsed = performance.now() - startTime;
+        let progress = Math.min(elapsed / fadeInDuration, 1); // Cap progress at 1
+        textMeshes.forEach(mesh => {
+            mesh.material.opacity = progress; // Gradually increase opacity
+        });
+
+        if (progress < 1) {
+            requestAnimationFrame(fadeIn); // Continue until fully visible
+        }
+    }
+
+    fadeIn();
+}
+
 
 // Handle interactions when the 'Enter' key is pressed
 function handleInteraction() {
@@ -623,9 +734,15 @@ function handleInteraction() {
             if (interactionBoxEntry.type === 'dropdown') {
                 dropdownOpen = !dropdownOpen; // Toggle dropdown open state
 
-                // Show or hide the project names
+                // Show or hide the project names with fade-in effect
                 for (let j = 0; j < projectNameEntries.length; j++) {
-                    projectNameEntries[j].mesh.visible = dropdownOpen;
+                    const projectMesh = projectNameEntries[j].mesh;
+                    if (dropdownOpen) {
+                        projectMesh.visible = true;
+                        fadeInText([projectMesh]); // Apply fade-in when opened
+                    } else {
+                        projectMesh.visible = false;
+                    }
                 }
                 return;
 
@@ -654,6 +771,7 @@ function handleInteraction() {
     }
 }
 
+
 // Enter testimonial mode
 let testimonialTextField;
 function enterTestimonialMode() {
@@ -675,16 +793,17 @@ function enterTestimonialMode() {
     testimonialTextField.rotation.x = -Math.PI / 2;
     scene.add(testimonialTextField);
 
-    // Create the text mesh for displaying testimonial text using cached font
     if (cachedFont) {
         const projectName = projectNameEntries.find(entry => entry.projectId === selectedProjectId)?.mesh.userData.title || 'Unknown Project';
+
         const projectNameGeometry = new THREE.TextGeometry(projectName, {
             font: cachedFont,
             size: 0.3,
             height: 0.01,
             curveSegments: 12,
         });
-        const projectNameMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
+
+        const projectNameMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100, transparent: true, opacity: 0 });
         projectNameTextMesh = new THREE.Mesh(projectNameGeometry, projectNameMaterial);
         projectNameTextMesh.position.set(addTestimonialBox.position.x - 1.5, 0.1, addTestimonialBox.position.z - 1.5);
         projectNameTextMesh.rotation.set(-Math.PI / 2, 0, 0);
@@ -696,14 +815,39 @@ function enterTestimonialMode() {
             height: 0.01,
             curveSegments: 12,
         });
-        testimonialDisplayTextMesh = new THREE.Mesh(testimonialGeometry, projectNameMaterial);
+
+        const testimonialMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100, transparent: true, opacity: 0 });
+        testimonialDisplayTextMesh = new THREE.Mesh(testimonialGeometry, testimonialMaterial);
         testimonialDisplayTextMesh.position.set(addTestimonialBox.position.x - 1.5, 0.1, addTestimonialBox.position.z - 2);
         testimonialDisplayTextMesh.rotation.set(-Math.PI / 2, 0, 0);
         scene.add(testimonialDisplayTextMesh);
+
+        // Start fade-in effect
+        fadeInText([projectNameTextMesh, testimonialDisplayTextMesh]);
     } else {
         console.error('Font not loaded yet.');
     }
 }
+
+function fadeInText(textMeshes) {
+    let fadeInDuration = 2000; // Duration in milliseconds
+    let startTime = performance.now();
+
+    function fadeIn() {
+        let elapsed = performance.now() - startTime;
+        let progress = Math.min(elapsed / fadeInDuration, 1); // Cap progress at 1
+        textMeshes.forEach(mesh => {
+            mesh.material.opacity = progress; // Gradually increase opacity
+        });
+
+        if (progress < 1) {
+            requestAnimationFrame(fadeIn); // Continue until fully visible
+        }
+    }
+
+    fadeIn();
+}
+
 
 // Submit the testimonial to the backend
 function submitTestimonial(text) {
@@ -790,34 +934,51 @@ function loadTestimonials() {
             const testimonials = result.$values || result; // Handle both wrapped and plain array
 
             if (Array.isArray(testimonials)) {
-                testimonials.forEach((testimonial, index) => {
-                    const projectId = testimonial.projectId;
+                const testimonialsByProject = {};
 
-                    // Find the associated pedestal for this project
-                    const associatedPedestal = pedestals.find(pedestal => pedestal.userData.projectId === projectId);
+                // Group testimonials by projectId
+                testimonials.forEach(testimonial => {
+                    const projectId = testimonial.projectId;
+                    if (!testimonialsByProject[projectId]) {
+                        testimonialsByProject[projectId] = [];
+                    }
+                    testimonialsByProject[projectId].push(testimonial);
+                });
+
+                // Render each group of testimonials
+                Object.keys(testimonialsByProject).forEach(projectId => {
+                    const testimonials = testimonialsByProject[projectId];
+                    const associatedPedestal = pedestals.find(pedestal => pedestal.userData.projectId === parseInt(projectId));
 
                     if (associatedPedestal && cachedFont) {
-                        // Create geometry and material for testimonial text
-                        const textGeometry = new THREE.TextGeometry(testimonial.content, {
-                            font: cachedFont,
-                            size: 0.3,
-                            height: 0.01,
-                            curveSegments: 12,
-                        });
-                        const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
-                        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                        testimonials.forEach((testimonial, index) => {
+                            // Create geometry and material for testimonial text
+                            const textGeometry = new THREE.TextGeometry(testimonial.content, {
+                                font: cachedFont,
+                                size: 0.3,
+                                height: 0.01,
+                                curveSegments: 12,
+                            });
+                            const textMaterial = new THREE.MeshPhongMaterial({
+                                color: 0x000000,
+                                shininess: 100,
+                                transparent: true,
+                                opacity: 0 // Start with opacity 0 for fade-in effect
+                            });
+                            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
 
-                        // Position the testimonial text to the right of the pedestal's interaction box
-                        const interactionBox = interactionBoxes.find(box => box.mesh.userData.url === associatedPedestal.userData.projectUrl);
-                        if (interactionBox) {
+                            // Position the testimonial text relative to the associated pedestal
                             textMesh.position.set(
-                                interactionBox.mesh.position.x + 1.5,
+                                associatedPedestal.position.x + 2.2,
                                 0.01,
-                                interactionBox.mesh.position.z - (index * 0.4)
+                                associatedPedestal.position.z - (index * 0.6) // Offset each testimonial for the same project
                             );
                             textMesh.rotation.set(-Math.PI / 2, 0, 0);
                             scene.add(textMesh);
-                        }
+
+                            // Apply fade-in effect
+                            fadeInText([textMesh]);
+                        });
                     } else {
                         console.error(`No pedestal found for project ID ${projectId} or font not loaded`);
                     }
@@ -831,6 +992,14 @@ function loadTestimonials() {
         });
 }
 
+
+
+//Stop spacebar from affecting scrolling
+window.addEventListener('keydown', function (e) {
+    if (e.key === ' ' && e.target === document.body) {
+        e.preventDefault();
+    }
+});
 function logGeometry(geometry, name) {
     if (geometry.attributes.position) {
         const positions = geometry.attributes.position.array;

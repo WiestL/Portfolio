@@ -52,4 +52,21 @@
         font-weight: bold;
         cursor: pointer;
     }
+
+    body, html {
+        margin: 0;
+        padding: 0;
+        overflow: hidden; /* Disable scrolling */
+        height: 100%; /* Ensure the body covers the whole screen */
+        width: 100%; /* Ensure the body covers the whole screen */
+    }
+
+    #portfolioContainer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw; /* Full width */
+        height: 100vh; /* Full height */
+        overflow: hidden; /* No overflow */
+    }
 </style>
