@@ -94,7 +94,7 @@ function createCharacter() {
     const charMaterial = new THREE.MeshLambertMaterial({ color: 0x00ff00 });  // Smooth shaded green character
     character = new THREE.Mesh(charGeometry, charMaterial);
     logGeometry(charGeometry, 'Character');
-    character.position.set(-30, 0.5, 0);  // Start the character outside the museum
+    character.position.set(-30, 0.5, 15);  // Start the character outside the museum
     scene.add(character);
 }
 
@@ -168,7 +168,7 @@ function createAddTestimonialBox() {
     const boxGeometry = new THREE.PlaneGeometry(3, 1);
     const boxMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000, opacity: 0.5, transparent: true });
     addTestimonialBox = new THREE.Mesh(boxGeometry, boxMaterial);
-    addTestimonialBox.position.set(5, 0.001, 5);  // Slightly above ground to avoid z-fighting
+    addTestimonialBox.position.set(-3, 0.001, 12);  // Slightly above ground to avoid z-fighting
     addTestimonialBox.rotation.x = -Math.PI / 2;
     addTestimonialBox.userData = { isTestimonialBox: true };
     scene.add(addTestimonialBox);
@@ -214,7 +214,7 @@ function createProjectDropdown() {
         transparent: true,
     });
     projectDropdown = new THREE.Mesh(dropdownGeometry, dropdownMaterial);
-    projectDropdown.position.set(10, 0.001, 5); // Position next to the testimonial box
+    projectDropdown.position.set(3, 0.001, 12); // Position next to the testimonial box
     projectDropdown.rotation.x = -Math.PI / 2;
     scene.add(projectDropdown);
 
@@ -442,55 +442,65 @@ function createPedestals(projects) {
     const pedestalGeometry = new THREE.BoxGeometry(1, 1, 1);  // Cube geometry for the pedestal
     const pedestalMaterial = new THREE.MeshLambertMaterial({ color: 0xdddddd });  // Light gray color
 
+    const museumWidth = Math.max(30, projects.length * 20);  // Use the same logic as in createMuseum
+    const startX = -museumWidth / 2 + 10;  // Start 10 units away from the left wall
+    const projectSpacing = museumWidth / (projects.length + 1);  // Evenly distribute projects
+
     projects.forEach((project, index) => {
         console.log('Creating pedestal for project ID:', project.projectId);
         const pedestal = new THREE.Mesh(pedestalGeometry, pedestalMaterial);
-        pedestal.position.set(index * 8, 0.5, 0);  // Position pedestals with some spacing
+
+        // Center the pedestals by calculating their position based on the index
+        pedestal.position.set(startX + index * projectSpacing, 0.5, 0);  // Centered along the x-axis
         pedestal.userData = project;  // Store project data in userData for later use
         scene.add(pedestal);
         pedestals.push(pedestal);
         pedestalBoxes.push(new THREE.Box3().setFromObject(pedestal));  // Initialize bounding box
         pedestalTouched.push(false);  // Not touched initially
 
-        // Create a flat interaction box on the ground next to the pedestal
-        const interactionBoxGeometry = new THREE.PlaneGeometry(1, 1);  // Plane geometry for the interaction box
-        const interactionBoxMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000, opacity: 0.5, transparent: true });
-        const interactionBoxMesh = new THREE.Mesh(interactionBoxGeometry, interactionBoxMaterial);
-        interactionBoxMesh.position.set(pedestal.position.x + 1.5, 0.001, pedestal.position.z);  // Slightly above the ground to avoid z-fighting
-        interactionBoxMesh.rotation.x = -Math.PI / 2;  // Lay flat on the ground
+        // Optionally, add interaction box and label for each pedestal
+        addInteractionBoxAndLabel(pedestal, project);
+    });
+}
 
-        // Assign the project URL to interaction box userData if it exists
-        interactionBoxMesh.userData = { url: project.projectUrl };
-        scene.add(interactionBoxMesh);
+function addInteractionBoxAndLabel(pedestal, project) {
+    // Create a flat interaction box on the ground next to the pedestal
+    const interactionBoxGeometry = new THREE.PlaneGeometry(1, 1);
+    const interactionBoxMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000, opacity: 0.5, transparent: true });
+    const interactionBoxMesh = new THREE.Mesh(interactionBoxGeometry, interactionBoxMaterial);
 
-        // Create bounding box and add to interactionBoxes
-        const interactionBox3 = new THREE.Box3().setFromObject(interactionBoxMesh);
-        interactionBoxes.push({
-            box: interactionBox3,
-            type: 'link',
-            mesh: interactionBoxMesh,
-            url: project.projectUrl
+    interactionBoxMesh.position.set(pedestal.position.x + 1.5, 0.001, pedestal.position.z);
+    interactionBoxMesh.rotation.x = -Math.PI / 2;
+
+    interactionBoxMesh.userData = { url: project.projectUrl };
+    scene.add(interactionBoxMesh);
+
+    const interactionBox3 = new THREE.Box3().setFromObject(interactionBoxMesh);
+    interactionBoxes.push({
+        box: interactionBox3,
+        type: 'link',
+        mesh: interactionBoxMesh,
+        url: project.projectUrl
+    });
+
+    // Add "Link" text using cached font
+    if (cachedFont) {
+        const linkTextGeometry = new THREE.TextGeometry('Link', {
+            font: cachedFont,
+            size: 0.3,
+            height: 0.01,
+            curveSegments: 12,
         });
 
-        // Add "Link" text using cached font
-        if (cachedFont) {
-            const linkTextGeometry = new THREE.TextGeometry('Link', {
-                font: cachedFont,
-                size: 0.3,
-                height: 0.01,
-                curveSegments: 12,
-            });
+        const linkTextMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
+        const linkTextMesh = new THREE.Mesh(linkTextGeometry, linkTextMaterial);
+        linkTextMesh.position.set(interactionBoxMesh.position.x - 0.3, 0.01, interactionBoxMesh.position.z);
+        linkTextMesh.rotation.set(-Math.PI / 2, 0, 0);  // Rotate to lay flat on the interaction box
 
-            const linkTextMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
-            const linkTextMesh = new THREE.Mesh(linkTextGeometry, linkTextMaterial);
-            linkTextMesh.position.set(interactionBoxMesh.position.x - 0.3, 0.01, interactionBoxMesh.position.z);
-            linkTextMesh.rotation.set(-Math.PI / 2, 0, 0);  // Rotate to lay flat on the interaction box
-
-            scene.add(linkTextMesh);
-        } else {
-            console.error('Font not loaded yet.');
-        }
-    });
+        scene.add(linkTextMesh);
+    } else {
+        console.error('Font not loaded yet.');
+    }
 }
 
 // Fetch and Display Project Information
