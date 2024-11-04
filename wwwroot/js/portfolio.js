@@ -11,23 +11,28 @@ let projectNameTextMesh;
 let cachedFont; // Cache the font for reuse
 
 // Initialize the scene
-function init() {
+async function init() {
     // Set up the scene, camera, and lighting
     setupSceneAndLighting();
 
     // Load the font and cache it
     const fontLoader = new THREE.FontLoader();
-    fontLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', (font) => {
+    fontLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', async (font) => {
         cachedFont = font;
         console.log('Font loaded:', cachedFont);
 
-
         // Now proceed with functions that depend on the font
         createCharacter();
-        createMuseum();
         createAddTestimonialBox();
         createProjectDropdown();
-        fetchProjectsAndCreatePedestals().then(loadTestimonials);
+
+        // Fetch projects and proceed after fetching
+        const projects = await fetchProjectsAndCreatePedestals();
+        const numProjects = projects.length;
+
+        createMuseum(numProjects); // Pass the correct number of projects
+        loadTestimonials(); // Proceed with testimonials after loading projects
+
         animate(); // Start the animation loop
     });
 
@@ -39,6 +44,7 @@ function init() {
     // Throttle proximity check
     setInterval(checkProximityToPedestals, 100); // Check every 100ms
 }
+
 function setupSceneAndLighting() {
     scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0xcccccc, 50, 200);
@@ -87,37 +93,65 @@ function createCharacter() {
     const charGeometry = new THREE.BoxGeometry(1, 1, 1);  // Cube geometry for the character
     const charMaterial = new THREE.MeshLambertMaterial({ color: 0x00ff00 });  // Smooth shaded green character
     character = new THREE.Mesh(charGeometry, charMaterial);
-    character.position.set(-15, 0.5, 0);  // Start the character outside the museum
+    logGeometry(charGeometry, 'Character');
+    character.position.set(-30, 0.5, 0);  // Start the character outside the museum
     scene.add(character);
 }
 
 let wallBoxes = [];  // Array to store bounding boxes for the walls
 
 // Function to create the museum environment (floor and walls)
-function createMuseum() {
-    // Create floor with a solid baby blue color
-    const floorColor = 0x89CFF0;  // Baby blue color
-    const floorMaterial = new THREE.MeshLambertMaterial({ color: floorColor });
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), floorMaterial);
+function createMuseum(numProjects) {
+    // Log number of projects
+    console.log(`Number of projects: ${numProjects}`);
+
+    // Fallback for invalid numProjects
+    numProjects = isNaN(numProjects) ? 0 : numProjects;
+
+    // Calculate museum dimensions based on the number of projects
+    const projectSpacing = 20;
+    const museumWidth = Math.max(30, numProjects * projectSpacing);
+    const museumDepth = 15;
+    const openingSize = 10;
+
+    // Validate dimensions
+    if (isNaN(museumWidth) || isNaN(museumDepth) || isNaN(openingSize)) {
+        console.error('Invalid museum dimensions', { museumWidth, museumDepth, openingSize });
+        return; // Exit the function if dimensions are invalid
+    }
+
+    console.log(`Museum dimensions: width=${museumWidth}, depth=${museumDepth}, openingSize=${openingSize}`);
+
+    const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x89CFF0 });
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(museumWidth, museumDepth), floorMaterial);
     floor.rotation.x = -Math.PI / 2;
     scene.add(floor);
+    logGeometry(floor.geometry, 'Floor');
 
-    // Wall material with a light gray color for visibility
+    // Wall material
     const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
 
-    // Adjusted positions for visibility
-    createWall(20, 1, 0.5, 0, 1, 30, wallMaterial);  // Front wall
-    createWall(20, 1, 0.5, 0, 1, 10, wallMaterial);  // Back wall
-    createWall(0.5, 1, 20, -10, 1, 20, wallMaterial);  // Left wall
-    createWall(0.5, 1, 10, 10, 1, 25, wallMaterial);  // Right wall
+    // Create walls with an opening for entrance
+    createWall(museumWidth, 2, 0.5, 0, 1, -museumDepth / 2, wallMaterial);  // Back wall
+    createWall(museumWidth / 2 - openingSize / 2, 2, 0.5, -museumWidth / 4 - openingSize / 4, 1, museumDepth / 2, wallMaterial);  // Left part of front wall
+    createWall(museumWidth / 2 - openingSize / 2, 2, 0.5, museumWidth / 4 + openingSize / 4, 1, museumDepth / 2, wallMaterial);  // Right part of front wall
+    createWall(0.5, 2, museumDepth, -museumWidth / 2, 1, 0, wallMaterial);  // Left wall
+    createWall(0.5, 2, museumDepth, museumWidth / 2, 1, 0, wallMaterial);  // Right wall
 }
-
 
 // Helper function to create a wall with bounding box and add to the scene
 function createWall(width, height, depth, x, y, z, material) {
+    if (isNaN(width) || isNaN(height) || isNaN(depth) || isNaN(x) || isNaN(y) || isNaN(z)) {
+        console.error('NaN detected in createWall parameters', { width, height, depth, x, y, z });
+        return; // Exit the function if any parameter is invalid
+    }
+
+    console.log(`Creating wall with dimensions: width=${width}, height=${height}, depth=${depth}, position=(${x}, ${y}, ${z})`);
+
     const wall = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
     wall.position.set(x, y, z);
     scene.add(wall);
+    logGeometry(wall.geometry, `Wall at (${x}, ${y}, ${z})`);
 
     // Add a visible edge for clarity
     const edge = new THREE.EdgesGeometry(wall.geometry);
@@ -382,17 +416,22 @@ async function fetchProjectsAndCreatePedestals() {
         }
 
         const result = await response.json();
-        const projects = result.$values || result; // Handle both wrapped and plain array
+        const projects = result.$values || result;
 
-        if (Array.isArray(projects)) {
-            createPedestals(projects);
-        } else {
-            console.error('Expected an array but received:', projects);
+        if (!Array.isArray(projects)) {
+            throw new Error('Expected an array of projects but received: ' + JSON.stringify(projects));
         }
+
+        createMuseum(projects.length);  // Adjust museum size based on project count
+        createPedestals(projects);
+
+        return projects;
     } catch (error) {
         console.error('Error fetching projects:', error);
+        return [];  // Return an empty array if there's an error
     }
 }
+
 
 let pedestals = [];
 let pedestalBoxes = [];  // For collision detection with the character
@@ -780,6 +819,19 @@ function loadTestimonials() {
         .catch(error => {
             console.error('Error loading testimonials:', error);
         });
+}
+
+function logGeometry(geometry, name) {
+    if (geometry.attributes.position) {
+        const positions = geometry.attributes.position.array;
+        for (let i = 0; i < positions.length; i += 3) {
+            if (isNaN(positions[i]) || isNaN(positions[i + 1]) || isNaN(positions[i + 2])) {
+                console.error(`NaN found in ${name} at index ${i / 3}:`, positions[i], positions[i + 1], positions[i + 2]);
+            }
+        }
+    } else {
+        console.error(`No position attribute in ${name}`);
+    }
 }
 
 // Animation loop to render the scene and update the movement
