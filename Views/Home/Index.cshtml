@@ -1,8 +1,47 @@
-﻿@{
+﻿@using ProjectPortfolio.Models
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<User> SignInManager
+@inject UserManager<User> UserManager
+
+@{
     ViewData["Title"] = "Home Page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="text-center mt-5">
+    <!-- Main Heading -->
+    <h1 class="display-4">Welcome to ProjectPortfolio</h1>
+    <p class="lead">Explore our projects and testimonials to learn more about our work.</p>
+
+    <!-- Action Buttons Section -->
+    <div class="mt-4">
+        @if (SignInManager.IsSignedIn(User))
+        {
+            <!-- Logout Button: Visible to authenticated users -->
+            <form asp-area="Identity" asp-page="/Account/Logout" method="post" class="d-inline">
+                <button type="submit" class="btn btn-danger btn-lg me-2">Logout</button>
+            </form>
+        }
+        else
+        {
+            <!-- Login and Register Buttons: Visible to unauthenticated users -->
+            <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary btn-lg me-2">Login</a>
+            <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-secondary btn-lg">Register</a>
+        }
+    </div>
+
+    <!-- Admin-Specific Buttons Section -->
+    @if (User.IsInRole("Admin"))
+    {
+        <div class="mt-4">
+            <!-- Edit Projects Button: Visible only to Admins -->
+            <a asp-controller="Projects" asp-action="Index" class="btn btn-warning btn-lg me-2">Edit Projects</a>
+            <!-- Edit Testimonials Button: Visible only to Admins -->
+            <a asp-controller="Testimonials" asp-action="Index" class="btn btn-warning btn-lg">Edit Testimonials</a>
+        </div>
+    }
+
+    <!-- Additional Information or Links -->
+    <div class="mt-5">
+        <p>Learn about <a href="https://learn.microsoft.com/aspnet/core" target="_blank">building Web apps with ASP.NET Core</a>.</p>
+    </div>
 </div>

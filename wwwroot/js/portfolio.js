@@ -1,7 +1,7 @@
 ﻿// Variables for the scene, camera, renderer, and character
 let scene, camera, renderer, character;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-const moveSpeed = 0.75;  // Character movement speed
+const moveSpeed = 0.5;  // Character movement speed
 let raycaster;
 let inTestimonialMode = false;  // Track whether user is in testimonial mode
 const proximityDistance = 2;  // The proximity distance in front of the pedestal
@@ -12,8 +12,8 @@ let cachedFont; // Cache the font for reuse
 
 // Initialize the scene
 async function init() {
-    // Set up the scene, camera, and lighting
-    setupSceneAndLighting();
+    // Set up the scene and camera
+    setupScene();
 
     // Load the font and cache it
     const fontLoader = new THREE.FontLoader();
@@ -47,7 +47,7 @@ async function init() {
     setInterval(checkProximityToPedestals, 100); // Check every 100ms
 }
 
-function setupSceneAndLighting() {
+function setupScene() {
     scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0xcccccc, 50, 200);
 
@@ -65,9 +65,8 @@ function setupSceneAndLighting() {
     renderer.setClearColor(scene.fog.color);
     renderer.setSize(window.innerWidth, window.innerHeight);
 
-    // Enable shadows
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Disable shadows to improve performance
+    // renderer.shadowMap.enabled = false; // Shadows are disabled by default
 
     document.body.appendChild(renderer.domElement);
 
@@ -75,38 +74,14 @@ function setupSceneAndLighting() {
     const ambientLight = new THREE.AmbientLight(0x666666);
     scene.add(ambientLight);
 
-    // Directional light for casting shadows
+    // Directional light without shadows
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
     directionalLight.position.set(10, 10, 10);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 1024;
-    directionalLight.shadow.mapSize.height = 1024;
-
-    // Configure the initial shadow camera frustum
-    const frustumSize = 15;
-    directionalLight.shadow.camera.left = -frustumSize;
-    directionalLight.shadow.camera.right = frustumSize;
-    directionalLight.shadow.camera.top = frustumSize;
-    directionalLight.shadow.camera.bottom = -frustumSize;
-    directionalLight.shadow.camera.near = 0.5;
-    directionalLight.shadow.camera.far = 50;
-
+    // Removed shadow configurations
     scene.add(directionalLight);
-
-    // Add a ground plane to receive shadows
-    const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x5aad6e });
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -1;
-    ground.receiveShadow = true;
-    scene.add(ground);
-
-    // Store the directional light globally for later adjustments
-    window.directionalLight = directionalLight;
 }
 
-
-
+// Removed all shadow-related properties and methods from objects
 function checkProximityToPedestals() {
     characterBox.setFromObject(character);  // Update character's bounding box
 
@@ -136,9 +111,8 @@ function createControlInstructions() {
         "- Walk up to a project to see details",
         "- Press Enter to interact with Link Boxes and Review Writing",
         "Controls:"
-        
     ];
-    
+
     // Create a large block to serve as the 3D billboard
     const billboardGeometry = new THREE.BoxGeometry(14, 6, 0.5); // Width, height, depth of the block
     const billboardMaterial = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
@@ -147,7 +121,6 @@ function createControlInstructions() {
     // Set the position of the billboard block
     billboard.position.set(-31, 6, 15); // Keep the same position but elevated for the pole
     billboard.rotation.set(0, 45, 0); // Rotate to face the player
-    billboard.castShadow = true;
     scene.add(billboard);
 
     // Create the pole to support the billboard
@@ -157,7 +130,6 @@ function createControlInstructions() {
 
     // Position the pole below the billboard
     pole.position.set(-31, 0.5, 15); // Ground level position for the pole
-    pole.castShadow = true;
     scene.add(pole);
 
     // Prevent the player from walking through the billboard by adding a bounding box
@@ -217,7 +189,6 @@ function createCharacter() {
     character = new THREE.Mesh(charGeometry, charMaterial);
     logGeometry(charGeometry, 'Character');
     character.position.set(-28, 0.5, 15);  // Start the character outside the museum
-    character.castShadow = true;
     scene.add(character);
 }
 
@@ -248,7 +219,6 @@ function createMuseum(numProjects) {
     const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x89CFF0 });
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(museumWidth, museumDepth), floorMaterial);
     floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
     scene.add(floor);
     logGeometry(floor.geometry, 'Floor');
 
@@ -274,7 +244,6 @@ function createWall(width, height, depth, x, y, z, material) {
 
     const wall = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
     wall.position.set(x, y, z);
-    wall.receiveShadow = true;
     scene.add(wall);
     logGeometry(wall.geometry, `Wall at (${x}, ${y}, ${z})`);
 
@@ -314,7 +283,7 @@ function createAddTestimonialBox() {
             height: 0.01,
             curveSegments: 12,
         });
-        const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
+        const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
         textMesh.position.set(addTestimonialBox.position.x - 1.4, 0.02, addTestimonialBox.position.z);
         textMesh.rotation.set(-Math.PI / 2, 0, 0);
@@ -585,7 +554,6 @@ async function fetchProjectsAndCreatePedestals() {
     }
 }
 
-
 let pedestals = [];
 let pedestalBoxes = [];  // For collision detection with the character
 let pedestalTouched = [];  // To track if the pedestal has already triggered
@@ -606,7 +574,6 @@ function createPedestals(projects) {
         // Center the pedestals by calculating their position based on the index
         pedestal.position.set(startX + index * projectSpacing, 0.5, 0);  // Centered along the x-axis
         pedestal.userData = project;  // Store project data in userData for later use
-        pedestal.castShadow = true;
         scene.add(pedestal);
         pedestals.push(pedestal);
         pedestalBoxes.push(new THREE.Box3().setFromObject(pedestal));  // Initialize bounding box
@@ -614,8 +581,6 @@ function createPedestals(projects) {
 
         // Optionally, add interaction box and label for each pedestal
         addInteractionBoxAndLabel(pedestal, project);
-        
-
     });
 }
 
@@ -648,7 +613,7 @@ function addInteractionBoxAndLabel(pedestal, project) {
             curveSegments: 12,
         });
 
-        const linkTextMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100 });
+        const linkTextMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
         const linkTextMesh = new THREE.Mesh(linkTextGeometry, linkTextMaterial);
         linkTextMesh.position.set(interactionBoxMesh.position.x - 0.3, 0.01, interactionBoxMesh.position.z);
         linkTextMesh.rotation.set(-Math.PI / 2, 0, 0);  // Rotate to lay flat on the interaction box
@@ -694,7 +659,7 @@ function createTextMeshes(font, project, pedestal) {
         curveSegments: 24,
     });
 
-    const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100, transparent: true, opacity: 0 });
+    const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, transparent: true, opacity: 0 });
     const textMesh = new THREE.Mesh(textGeometry, textMaterial);
 
     // Position the text on the ground in front of the pedestal
@@ -712,7 +677,7 @@ function createTextMeshes(font, project, pedestal) {
         curveSegments: 24,
     });
 
-    const descriptionMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100, transparent: true, opacity: 0 });
+    const descriptionMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, transparent: true, opacity: 0 });
     const descriptionMesh = new THREE.Mesh(descriptionGeometry, descriptionMaterial);
 
     // Position the description below the title
@@ -744,7 +709,6 @@ function fadeInText(textMeshes) {
 
     fadeIn();
 }
-
 
 // Handle interactions when the 'Enter' key is pressed
 function handleInteraction() {
@@ -873,7 +837,7 @@ function enterTestimonialMode() {
             curveSegments: 12,
         });
 
-        const projectNameMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100, transparent: true, opacity: 0 });
+        const projectNameMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, transparent: true, opacity: 0 });
         projectNameTextMesh = new THREE.Mesh(projectNameGeometry, projectNameMaterial);
         projectNameTextMesh.position.set(addTestimonialBox.position.x - 1.5, 0.1, addTestimonialBox.position.z - 1.5);
         projectNameTextMesh.rotation.set(-Math.PI / 2, 0, 0);
@@ -886,7 +850,7 @@ function enterTestimonialMode() {
             curveSegments: 12,
         });
 
-        const testimonialMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 100, transparent: true, opacity: 0 });
+        const testimonialMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, transparent: true, opacity: 0 });
         testimonialDisplayTextMesh = new THREE.Mesh(testimonialGeometry, testimonialMaterial);
         testimonialDisplayTextMesh.position.set(addTestimonialBox.position.x - 1.5, 0.1, addTestimonialBox.position.z - 2);
         testimonialDisplayTextMesh.rotation.set(-Math.PI / 2, 0, 0);
@@ -899,27 +863,6 @@ function enterTestimonialMode() {
     }
 }
 
-function fadeInText(textMeshes) {
-    let fadeInDuration = 2000; // Duration in milliseconds
-    let startTime = performance.now();
-
-    function fadeIn() {
-        let elapsed = performance.now() - startTime;
-        let progress = Math.min(elapsed / fadeInDuration, 1); // Cap progress at 1
-        textMeshes.forEach(mesh => {
-            mesh.material.opacity = progress; // Gradually increase opacity
-        });
-
-        if (progress < 1) {
-            requestAnimationFrame(fadeIn); // Continue until fully visible
-        }
-    }
-
-    fadeIn();
-}
-
-
-// Submit the testimonial to the backend
 function submitTestimonial(text) {
     if (!selectedProjectId) {
         console.error('No project selected. Cannot submit testimonial.');
@@ -1031,7 +974,6 @@ function loadTestimonials() {
                             });
                             const textMaterial = new THREE.MeshPhongMaterial({
                                 color: 0x000000,
-                                shininess: 100,
                                 transparent: true,
                                 opacity: 0 // Start with opacity 0 for fade-in effect
                             });
@@ -1087,30 +1029,7 @@ function logGeometry(geometry, name) {
 function animate() {
     requestAnimationFrame(animate);
     updateMovement();  // Update character movement
-    // Ensure the shadow frustum always covers the character
-    adjustShadowCameraFrustum(character);
     renderer.render(scene, camera);
-}
-function adjustShadowCameraFrustum(character) {
-    const light = window.directionalLight;
-    const charPos = character.position;
-
-    // Adjust the light position based on character's position
-    light.position.set(charPos.x +2 , 20, charPos.z + 2 );
-
-    // Keep the frustum centered around the character
-    const frustumSize = 20;  // Adjust based on the size of the scene and objects
-    light.shadow.camera.left = -frustumSize;
-    light.shadow.camera.right = frustumSize;
-    light.shadow.camera.top = frustumSize;
-    light.shadow.camera.bottom = -frustumSize;
-
-    // Adjust near and far based on the scene depth
-    light.shadow.camera.near = 1;
-    light.shadow.camera.far = 50;
-
-    // Update the shadow camera's projection matrix
-    light.shadow.camera.updateProjectionMatrix();
 }
 
 // Start the scene once the window has loaded
