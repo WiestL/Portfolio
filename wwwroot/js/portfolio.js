@@ -538,18 +538,23 @@ async function fetchProjectsAndCreatePedestals() {
         }
 
         const result = await response.json();
-        const projects = result.$values || result;
 
+        // Handle cases where the response is either an array directly or wrapped in a $values property
+        const projects = Array.isArray(result) ? result : result.$values || [];
+
+        // Verify that projects is indeed an array
         if (!Array.isArray(projects)) {
             throw new Error('Expected an array of projects but received: ' + JSON.stringify(projects));
         }
 
+        // Proceed with your logic
         createMuseum(projects.length);  // Adjust museum size based on project count
         createPedestals(projects);
 
         return projects;
     } catch (error) {
         console.error('Error fetching projects:', error);
+        alert("An error occurred while fetching projects. Check the console for details.");
         return [];  // Return an empty array if there's an error
     }
 }
