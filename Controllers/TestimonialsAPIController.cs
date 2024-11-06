@@ -39,10 +39,25 @@ namespace ProjectPortfolio.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching testimonials.");
-                return StatusCode(500, "Internal server error while fetching testimonials.");
+                // Log detailed error information, including stack trace and inner exception
+                _logger.LogError(ex, "Error fetching testimonials. Exception: {Message}", ex.Message);
+                if (ex.InnerException != null)
+                {
+                    _logger.LogError("Inner Exception: {InnerMessage}", ex.InnerException.Message);
+                }
+                _logger.LogError("Stack Trace: {StackTrace}", ex.StackTrace);
+
+                // Return JSON response with error details for debugging
+                return StatusCode(500, new
+                {
+                    error = "Internal server error while fetching testimonials.",
+                    message = ex.Message,
+                    innerException = ex.InnerException?.Message,
+                    stackTrace = ex.StackTrace
+                });
             }
         }
+
 
         // GET: api/Testimonials/5
         [HttpGet("{id}")]
@@ -63,9 +78,22 @@ namespace ProjectPortfolio.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error fetching testimonial with ID {TestimonialId}.", id);
-                return StatusCode(500, "Internal server error while fetching the testimonial.");
+                if (ex.InnerException != null)
+                {
+                    _logger.LogError("Inner Exception: {InnerMessage}", ex.InnerException.Message);
+                }
+                _logger.LogError("Stack Trace: {StackTrace}", ex.StackTrace);
+
+                return StatusCode(500, new
+                {
+                    error = "Internal server error while fetching the testimonial.",
+                    message = ex.Message,
+                    innerException = ex.InnerException?.Message,
+                    stackTrace = ex.StackTrace
+                });
             }
         }
+
 
         // POST: api/Testimonials
         [HttpPost]

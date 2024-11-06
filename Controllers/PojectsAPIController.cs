@@ -42,8 +42,22 @@ namespace ProjectPortfolio.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching projects."); // Log the error with stack trace
-                return StatusCode(500, "Internal server error while fetching projects.");
+                // Log detailed error information, including stack trace and inner exception
+                _logger.LogError(ex, "Error fetching projects. Exception: {Message}", ex.Message);
+                if (ex.InnerException != null)
+                {
+                    _logger.LogError("Inner Exception: {InnerMessage}", ex.InnerException.Message);
+                }
+                _logger.LogError("Stack Trace: {StackTrace}", ex.StackTrace);
+
+                // Return JSON response with error details for debugging
+                return StatusCode(500, new
+                {
+                    error = "Internal server error while fetching projects.",
+                    message = ex.Message,
+                    innerException = ex.InnerException?.Message,
+                    stackTrace = ex.StackTrace
+                });
             }
         }
 
