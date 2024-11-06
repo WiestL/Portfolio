@@ -1,14 +1,19 @@
 ﻿// Variables for the scene, camera, renderer, and character
 let scene, camera, renderer, character;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-const moveSpeed = 0.5;  // Character movement speed
+const moveSpeed = 5;  // Character movement speed
 let raycaster;
 let inTestimonialMode = false;  // Track whether user is in testimonial mode
-const proximityDistance = 2;  // The proximity distance in front of the pedestal
 let intersectedPedestal = null;  // Track the current pedestal in proximity
 let testimonialDisplayTextMesh;
 let projectNameTextMesh;
 let cachedFont; // Cache the font for reuse
+let clock = new THREE.Clock(); // Keeps track of time between frames
+
+// New variables for proximity detection
+let proximitySpheres = []; // Array to store proximity spheres for each pedestal
+let projectInfoVisible = []; // Track visibility state for each pedestal's info
+let pedestalInfoMeshes = []; // Store the text meshes for each pedestal's info
 
 // Initialize the scene
 async function init() {
@@ -81,20 +86,22 @@ function setupScene() {
     scene.add(directionalLight);
 }
 
-// Removed all shadow-related properties and methods from objects
 function checkProximityToPedestals() {
-    characterBox.setFromObject(character);  // Update character's bounding box
+    const characterPosition = character.position.clone();  // Get character's position
 
-    for (let i = 0; i < pedestalBoxes.length; i++) {
-        pedestalBoxes[i].setFromObject(pedestals[i]);  // Ensure pedestal bounding boxes are up to date
+    for (let i = 0; i < proximitySpheres.length; i++) {
+        const isNear = proximitySpheres[i].containsPoint(characterPosition);
 
-        if (characterBox.intersectsBox(pedestalBoxes[i])) {
-            if (!pedestalTouched[i]) {
-                console.log("Character is near pedestal:", i);  // Log proximity
-                showProjectDetails(i, pedestals[i]);  // Pass pedestal reference
-                pedestalTouched[i] = true;  // Ensure it's only shown once
-            }
-            return;  // Exit after detecting the first interaction
+        if (isNear && !projectInfoVisible[i]) {
+            // Show project info
+            console.log("Character is near pedestal:", i);
+            showProjectDetails(i, pedestals[i]);
+            projectInfoVisible[i] = true;
+        } else if (!isNear && projectInfoVisible[i]) {
+            // Hide project info
+            console.log("Character moved away from pedestal:", i);
+            hideProjectDetails(i);
+            projectInfoVisible[i] = false;
         }
     }
 }
@@ -115,7 +122,7 @@ function createControlInstructions() {
 
     // Create a large block to serve as the 3D billboard
     const billboardGeometry = new THREE.BoxGeometry(14, 6, 0.5); // Width, height, depth of the block
-    const billboardMaterial = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
+    const billboardMaterial = new THREE.MeshLambertMaterial({ color: 0x00d0ff });
     const billboard = new THREE.Mesh(billboardGeometry, billboardMaterial);
 
     // Set the position of the billboard block
@@ -125,7 +132,7 @@ function createControlInstructions() {
 
     // Create the pole to support the billboard
     const poleGeometry = new THREE.CylinderGeometry(0.5, 0.3, 5, 32); // Narrow and tall cylinder for the pole
-    const poleMaterial = new THREE.MeshLambertMaterial({ color: 0xaaaaaa }); // Slightly darker for contrast
+    const poleMaterial = new THREE.MeshLambertMaterial({ color: 0x8f00ff }); // Slightly darker for contrast
     const pole = new THREE.Mesh(poleGeometry, poleMaterial);
 
     // Position the pole below the billboard
@@ -161,7 +168,7 @@ function createControlInstructions() {
     });
 
     // Animate the fading in of the instructions
-    let fadeInDuration = 2000; // Duration in milliseconds
+    let fadeInDuration = 200; // Duration in milliseconds
     let startTime = performance.now();
 
     function fadeIn() {
@@ -181,7 +188,6 @@ function createControlInstructions() {
     fadeIn();
 }
 
-
 // Function to create the character (a small cube)
 function createCharacter() {
     const charGeometry = new THREE.BoxGeometry(1, 1, 1);  // Cube geometry for the character
@@ -194,9 +200,12 @@ function createCharacter() {
 
 let wallBoxes = [];  // Array to store bounding boxes for the walls
 
+let museumCreated = false;
 // Function to create the museum environment (floor and walls)
 function createMuseum(numProjects) {
     // Log number of projects
+    if (museumCreated) return; // Prevent multiple calls
+    museumCreated = true;
     console.log(`Number of projects: ${numProjects}`);
 
     // Fallback for invalid numProjects
@@ -412,7 +421,7 @@ function createProjectDropdown() {
 }
 
 function fadeInText(meshes) {
-    const duration = 1000; // Duration in milliseconds
+    const duration = 200; // Duration in milliseconds
     const step = 16; // Step for requestAnimationFrame
     const increment = step / duration;
 
@@ -469,7 +478,8 @@ let characterBox = new THREE.Box3();
 
 function updateMovement() {
     if (inTestimonialMode) return;  // Disable movement when in testimonial mode
-
+    const deltaTime = clock.getDelta(); // Time elapsed since the last frame
+    const adjustedSpeed = moveSpeed * deltaTime; // Adjust speed based on time
     const oldPosition = character.position.clone();
 
     // Adjust isometric movement
@@ -479,14 +489,19 @@ function updateMovement() {
     const rightVector = new THREE.Vector3(1, 0, -1).normalize();
 
     // Move the character based on input
-    if (moveForward) character.position.add(forwardVector.clone().multiplyScalar(moveSpeed));
-    if (moveBackward) character.position.add(backwardVector.clone().multiplyScalar(moveSpeed));
-    if (moveLeft) character.position.add(leftVector.clone().multiplyScalar(moveSpeed));
-    if (moveRight) character.position.add(rightVector.clone().multiplyScalar(moveSpeed));
+    if (moveForward) character.position.add(forwardVector.clone().multiplyScalar(adjustedSpeed));
+    if (moveBackward) character.position.add(backwardVector.clone().multiplyScalar(adjustedSpeed));
+    if (moveLeft) character.position.add(leftVector.clone().multiplyScalar(adjustedSpeed));
+    if (moveRight) character.position.add(rightVector.clone().multiplyScalar(adjustedSpeed));
 
     // Update the character's bounding box only if position changed
     if (!oldPosition.equals(character.position)) {
         characterBox.setFromObject(character);
+    }
+
+    // *** Update collision boxes for pedestals ***
+    for (let i = 0; i < pedestalBoxes.length; i++) {
+        pedestalBoxes[i].setFromObject(collisionBoxes[i]); // Update the pedestal's collision box
     }
 
     // Check for collisions with walls and pedestals
@@ -497,22 +512,29 @@ function updateMovement() {
             break;
         }
     }
-    for (let i = 0; i < pedestalBoxes.length; i++) {
-        if (characterBox.intersectsBox(pedestalBoxes[i])) {
-            isCollision = true;
-            break;
+    if (!isCollision) {
+        for (let i = 0; i < pedestalBoxes.length; i++) {
+            if (characterBox.intersectsBox(pedestalBoxes[i])) {
+                isCollision = true;
+                break;
+            }
         }
     }
 
-    // Allow walking over interaction boxes
+    // If there is a collision with walls or pedestals, prevent movement
+    if (isCollision) {
+        character.position.copy(oldPosition);  // Revert to old position on collision
+    }
+
+    // Now check for interactions
+    let isOnInteractionBox = false;
     for (let i = 0; i < interactionBoxes.length; i++) {
         const interactionBoxEntry = interactionBoxes[i];
         const interactionBox = interactionBoxEntry.box;
 
         if (interactionBox && interactionBox.isBox3) {
             if (characterBox.intersectsBox(interactionBox)) {
-                // Character is on an interaction box, but it should not be blocked
-                isCollision = false;
+                isOnInteractionBox = true;
                 break; // Stop checking after finding an interaction
             }
         } else {
@@ -520,9 +542,8 @@ function updateMovement() {
         }
     }
 
-    if (isCollision) {
-        character.position.copy(oldPosition);  // Revert to old position on collision
-    }
+    // You can handle any logic for when the character is on an interaction box here
+    // For example, change cursor, display tooltip, etc.
 
     // Update the camera to follow the character
     camera.position.x = character.position.x + 10;
@@ -561,41 +582,78 @@ async function fetchProjectsAndCreatePedestals() {
 
 let pedestals = [];
 let pedestalBoxes = [];  // For collision detection with the character
-let pedestalTouched = [];  // To track if the pedestal has already triggered
+let collisionBoxes = []; // To store collision boxes
 
 function createPedestals(projects) {
-    console.log('Projects:', projects);
-    const pedestalGeometry = new THREE.BoxGeometry(1, 1, 1);  // Cube geometry for the pedestal
-    const pedestalMaterial = new THREE.MeshLambertMaterial({ color: 0xdddddd });  // Light gray color
+    const loader = new THREE.GLTFLoader();
 
-    const museumWidth = Math.max(30, projects.length * 20);  // Use the same logic as in createMuseum
-    const startX = -museumWidth / 2 + 10;  // Start 10 units away from the left wall
-    const projectSpacing = museumWidth / (projects.length + 1);  // Evenly distribute projects
+    loader.load('/3DModels/LowPolyPedestal.glb', (gltf) => {
+        const model = gltf.scene;
+        model.scale.set(0.0025, 0.0025, 0.0025);
 
-    projects.forEach((project, index) => {
-        console.log('Creating pedestal for project ID:', project.projectId);
-        const pedestal = new THREE.Mesh(pedestalGeometry, pedestalMaterial);
+        const museumWidth = Math.max(30, projects.length * 20);
+        const startX = -museumWidth / 2 + 10;
+        const projectSpacing = museumWidth / (projects.length + 1);
 
-        // Center the pedestals by calculating their position based on the index
-        pedestal.position.set(startX + index * projectSpacing, 0.5, 0);  // Centered along the x-axis
-        pedestal.userData = project;  // Store project data in userData for later use
-        scene.add(pedestal);
-        pedestals.push(pedestal);
-        pedestalBoxes.push(new THREE.Box3().setFromObject(pedestal));  // Initialize bounding box
-        pedestalTouched.push(false);  // Not touched initially
+        projects.forEach((project, index) => {
+            const pedestal = model.clone();
+            pedestal.position.set(startX + index * projectSpacing, 0, 0);
+            pedestal.userData = project;
+            scene.add(pedestal);
 
-        // Optionally, add interaction box and label for each pedestal
-        addInteractionBoxAndLabel(pedestal, project);
+            pedestals.push(pedestal);
+
+            // Calculate the pedestal's bounding box size
+            const pedestalBox3 = new THREE.Box3().setFromObject(pedestal);
+            const size = new THREE.Vector3();
+            pedestalBox3.getSize(size);
+
+            size.multiplyScalar(0.6);
+
+            // Create the collision box with the new size
+            const collisionBoxGeometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+            const collisionBoxMaterial = new THREE.MeshBasicMaterial({
+                visible: false,
+            });
+            const collisionBox = new THREE.Mesh(collisionBoxGeometry, collisionBoxMaterial);
+
+            // Position the collision box to match the pedestal
+            collisionBox.position.copy(pedestal.position);
+            collisionBox.position.y += size.y / 2; // Center vertically
+            scene.add(collisionBox);
+
+            // Update bounding box for the collision box
+            const pedestalBox = new THREE.Box3().setFromObject(collisionBox);
+            pedestalBoxes.push(pedestalBox);
+
+            // Store the collision box for updates
+            collisionBoxes.push(collisionBox);
+
+            // Create the proximity sphere
+            const proximityRadius = 5; // Adjust this value as needed
+            const proximitySphere = new THREE.Sphere(pedestal.position.clone(), proximityRadius);
+            proximitySpheres.push(proximitySphere);
+
+            // Initialize visibility and meshes arrays
+            projectInfoVisible.push(false);
+            pedestalInfoMeshes.push(null);
+
+            // Add the link box and label for each pedestal
+            addInteractionBoxAndLabel(pedestal, project);
+        });
+    }, undefined, (error) => {
+        console.error('An error occurred while loading the pedestal model:', error);
     });
 }
 
 function addInteractionBoxAndLabel(pedestal, project) {
-    // Create a flat interaction box on the ground next to the pedestal
-    const interactionBoxGeometry = new THREE.PlaneGeometry(1, 1);
+    // Create a smaller interaction box based on the pedestal's scale
+    const interactionBoxGeometry = new THREE.PlaneGeometry(1, 1); // Smaller box size
     const interactionBoxMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000, opacity: 0.5, transparent: true });
     const interactionBoxMesh = new THREE.Mesh(interactionBoxGeometry, interactionBoxMaterial);
 
-    interactionBoxMesh.position.set(pedestal.position.x + 1.5, 0.001, pedestal.position.z);
+    // Position the interaction box closer to the pedestal
+    interactionBoxMesh.position.set(pedestal.position.x, pedestal.position.y + 0.1, pedestal.position.z + 1);
     interactionBoxMesh.rotation.x = -Math.PI / 2;
 
     interactionBoxMesh.userData = { url: project.projectUrl };
@@ -609,18 +667,18 @@ function addInteractionBoxAndLabel(pedestal, project) {
         url: project.projectUrl
     });
 
-    // Add "Link" text using cached font
+    // Add "Link" text using cached font, adjusting size and position for visibility
     if (cachedFont) {
         const linkTextGeometry = new THREE.TextGeometry('Link', {
             font: cachedFont,
-            size: 0.3,
+            size: 0.2, // Smaller size for scaled-down objects
             height: 0.01,
             curveSegments: 12,
         });
 
         const linkTextMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
         const linkTextMesh = new THREE.Mesh(linkTextGeometry, linkTextMaterial);
-        linkTextMesh.position.set(interactionBoxMesh.position.x - 0.3, 0.01, interactionBoxMesh.position.z);
+        linkTextMesh.position.set(interactionBoxMesh.position.x - 0.25, 0.1, interactionBoxMesh.position.z);
         linkTextMesh.rotation.set(-Math.PI / 2, 0, 0);  // Rotate to lay flat on the interaction box
 
         scene.add(linkTextMesh);
@@ -639,21 +697,39 @@ function showProjectDetails(pedestalIndex, pedestal) {
     }
 
     // Render project details on the ground in front of the pedestal
-    createProjectInfoOnGround(project, pedestal);
+    const textMeshes = createProjectInfoOnGround(project, pedestal);
+    console.log("Displaying project info:", project.title, project.description);
+
+    // Store the text meshes in pedestalInfoMeshes
+    pedestalInfoMeshes[pedestalIndex] = textMeshes;
+}
+
+function hideProjectDetails(pedestalIndex) {
+    const meshes = pedestalInfoMeshes[pedestalIndex];
+    if (meshes) {
+        meshes.forEach(mesh => {
+            scene.remove(mesh);
+            mesh.geometry.dispose();
+            mesh.material.dispose();
+        });
+        pedestalInfoMeshes[pedestalIndex] = null;
+    }
 }
 
 function createProjectInfoOnGround(project, pedestal) {
     if (cachedFont) {
-        createTextMeshes(cachedFont, project, pedestal);
+        const textMeshes = createTextMeshes(cachedFont, project, pedestal);
+        return textMeshes; // Return the text meshes
     } else {
         console.error('Font not loaded yet.');
+        return null;
     }
 }
 
 function createTextMeshes(font, project, pedestal) {
     if (!project || !project.title || !project.description) {
         console.error('Invalid project data:', project);
-        return;
+        return null;
     }
 
     // Create 3D text for the project title
@@ -668,7 +744,7 @@ function createTextMeshes(font, project, pedestal) {
     const textMesh = new THREE.Mesh(textGeometry, textMaterial);
 
     // Position the text on the ground in front of the pedestal
-    textMesh.position.set(pedestal.position.x - 3, 0, pedestal.position.z);
+    textMesh.position.set(pedestal.position.x - 3, 0, pedestal.position.z - 0.2);
     textMesh.rotation.set(0, Math.PI / 4, 0);
 
     // Add the text to the scene
@@ -686,7 +762,7 @@ function createTextMeshes(font, project, pedestal) {
     const descriptionMesh = new THREE.Mesh(descriptionGeometry, descriptionMaterial);
 
     // Position the description below the title
-    descriptionMesh.position.set(pedestal.position.x - 3.5, 0.7, pedestal.position.z);
+    descriptionMesh.position.set(pedestal.position.x - 4, 0.7, pedestal.position.z - 0.2);
     descriptionMesh.rotation.set(0, Math.PI / 4, 0);
 
     // Add the description to the scene
@@ -694,25 +770,9 @@ function createTextMeshes(font, project, pedestal) {
 
     // Start fade-in effect for both title and description
     fadeInText([textMesh, descriptionMesh]);
-}
 
-function fadeInText(textMeshes) {
-    let fadeInDuration = 2000; // Duration in milliseconds
-    let startTime = performance.now();
-
-    function fadeIn() {
-        let elapsed = performance.now() - startTime;
-        let progress = Math.min(elapsed / fadeInDuration, 1); // Cap progress at 1
-        textMeshes.forEach(mesh => {
-            mesh.material.opacity = progress; // Gradually increase opacity
-        });
-
-        if (progress < 1) {
-            requestAnimationFrame(fadeIn); // Continue until fully visible
-        }
-    }
-
-    fadeIn();
+    // Return the meshes so we can remove them later
+    return [textMesh, descriptionMesh];
 }
 
 // Handle interactions when the 'Enter' key is pressed
@@ -809,7 +869,6 @@ function handleInteraction() {
         console.log("Character is not on any interaction box.");
     }
 }
-
 
 // Enter testimonial mode
 let testimonialTextField;
@@ -986,7 +1045,7 @@ function loadTestimonials() {
 
                             // Position the testimonial text relative to the associated pedestal
                             textMesh.position.set(
-                                associatedPedestal.position.x + 2.2,
+                                associatedPedestal.position.x + 1.2,
                                 0.01,
                                 associatedPedestal.position.z - (index * 0.6) // Offset each testimonial for the same project
                             );
@@ -1009,14 +1068,13 @@ function loadTestimonials() {
         });
 }
 
-
-
-//Stop spacebar from affecting scrolling
+// Stop spacebar from affecting scrolling
 window.addEventListener('keydown', function (e) {
     if (e.key === ' ' && e.target === document.body) {
         e.preventDefault();
     }
 });
+
 function logGeometry(geometry, name) {
     if (geometry.attributes.position) {
         const positions = geometry.attributes.position.array;

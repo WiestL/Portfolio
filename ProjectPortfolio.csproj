@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="wwwroot\3DModels\LowPolyPedestal.glb" />
     <None Include="wwwroot\Textures\aliengroundgrass.png" />
   </ItemGroup>
 

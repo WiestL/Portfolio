@@ -1,0 +1,6 @@
+﻿namespace ProjectPortfolio.wwwroot
+{
+    public class test
+    {
+    }
+}

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using ProjectPortfolio.Contexts;
 using ProjectPortfolio.Models;
 using ProjectPortfolio.Services;
@@ -65,6 +66,21 @@ using (var scope = app.Services.CreateScope())
         logger.LogError(ex, "An error occurred while seeding roles and users.");
     }
 }
+app.UseStaticFiles(new StaticFileOptions
+{
+    ServeUnknownFileTypes = true, // Allow serving unknown file types
+    DefaultContentType = "application/octet-stream", // Set default content type if MIME type is unknown
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")
+    ),
+    OnPrepareResponse = ctx =>
+    {
+        if (ctx.File.Name.EndsWith(".glb"))
+        {
+            ctx.Context.Response.ContentType = "model/gltf-binary"; // Set MIME type for .glb files
+        }
+    }
+});
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -74,7 +90,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+
 
 app.UseRouting();
 
