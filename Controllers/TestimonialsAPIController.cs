@@ -2,18 +2,22 @@
 using Microsoft.EntityFrameworkCore;
 using ProjectPortfolio.Contexts;
 using ProjectPortfolio.Models;
+using Microsoft.Extensions.Logging; // Import the logging namespace
 
 namespace ProjectPortfolio.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class TestimonialsAPIController : Controller
+    public class TestimonialsAPIController : ControllerBase // Inherit from ControllerBase for API controllers
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<TestimonialsAPIController> _logger; // Declare the logger
 
-        public TestimonialsAPIController(ApplicationDbContext context)
+        // Inject ILogger through the constructor
+        public TestimonialsAPIController(ApplicationDbContext context, ILogger<TestimonialsAPIController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         // GET: api/Testimonials
@@ -35,24 +39,32 @@ namespace ProjectPortfolio.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error fetching testimonials: {ex.Message}");
+                _logger.LogError(ex, "Error fetching testimonials.");
                 return StatusCode(500, "Internal server error while fetching testimonials.");
             }
         }
-
 
         // GET: api/Testimonials/5
         [HttpGet("{id}")]
         public async Task<IActionResult> GetTestimonial(int id)
         {
-            var testimonial = await _context.Testimonials.FindAsync(id);
-
-            if (testimonial == null)
+            try
             {
-                return NotFound();
-            }
+                var testimonial = await _context.Testimonials.FindAsync(id);
 
-            return Ok(testimonial);
+                if (testimonial == null)
+                {
+                    _logger.LogWarning("GetTestimonial: Testimonial with ID {TestimonialId} not found.", id);
+                    return NotFound();
+                }
+
+                return Ok(testimonial);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching testimonial with ID {TestimonialId}.", id);
+                return StatusCode(500, "Internal server error while fetching the testimonial.");
+            }
         }
 
         // POST: api/Testimonials
@@ -61,6 +73,7 @@ namespace ProjectPortfolio.Controllers
         {
             if (!ModelState.IsValid)
             {
+                _logger.LogWarning("CreateTestimonial: Invalid model state.");
                 return BadRequest(ModelState);
             }
 
@@ -68,17 +81,16 @@ namespace ProjectPortfolio.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                _logger.LogInformation("CreateTestimonial: Testimonial with ID {TestimonialId} created successfully.", testimonial.TestimonialId);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error saving testimonial: {ex.InnerException?.Message}");
-                return StatusCode(500, "Internal server error");
+                _logger.LogError(ex, "Error saving testimonial.");
+                return StatusCode(500, "Internal server error while saving the testimonial.");
             }
-
 
             return CreatedAtAction(nameof(GetTestimonial), new { id = testimonial.TestimonialId }, testimonial);
         }
-
 
         // PUT: api/Testimonials/5
         [HttpPut("{id}")]
@@ -86,6 +98,7 @@ namespace ProjectPortfolio.Controllers
         {
             if (id != testimonial.TestimonialId || !ModelState.IsValid)
             {
+                _logger.LogWarning("UpdateTestimonial: Invalid testimonial ID or model state.");
                 return BadRequest();
             }
 
@@ -94,14 +107,22 @@ namespace ProjectPortfolio.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                _logger.LogInformation("UpdateTestimonial: Testimonial with ID {TestimonialId} updated successfully.", id);
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException ex)
             {
                 if (!_context.Testimonials.Any(t => t.TestimonialId == id))
                 {
+                    _logger.LogWarning("UpdateTestimonial: Testimonial with ID {TestimonialId} not found for update.", id);
                     return NotFound();
                 }
-                throw;
+                _logger.LogError(ex, "UpdateTestimonial: Concurrency error while updating testimonial with ID {TestimonialId}.", id);
+                throw; // Rethrow to let the framework handle it
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UpdateTestimonial: Error updating testimonial with ID {TestimonialId}.", id);
+                return StatusCode(500, "Internal server error while updating the testimonial.");
             }
 
             return NoContent();
@@ -111,16 +132,26 @@ namespace ProjectPortfolio.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTestimonial(int id)
         {
-            var testimonial = await _context.Testimonials.FindAsync(id);
-            if (testimonial == null)
+            try
             {
-                return NotFound();
+                var testimonial = await _context.Testimonials.FindAsync(id);
+                if (testimonial == null)
+                {
+                    _logger.LogWarning("DeleteTestimonial: Testimonial with ID {TestimonialId} not found.", id);
+                    return NotFound();
+                }
+
+                _context.Testimonials.Remove(testimonial);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("DeleteTestimonial: Testimonial with ID {TestimonialId} deleted successfully.", id);
+
+                return NoContent();
             }
-
-            _context.Testimonials.Remove(testimonial);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DeleteTestimonial: Error deleting testimonial with ID {TestimonialId}.", id);
+                return StatusCode(500, "Internal server error while deleting the testimonial.");
+            }
         }
     }
 }
