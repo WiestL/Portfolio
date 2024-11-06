@@ -47,9 +47,6 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Identity/Account/AccessDenied";
 });
 
-// (Optional) Register IEmailSender if needed
-// builder.Services.AddTransient<IEmailSender, DummyEmailSender>();
-
 var app = builder.Build();
 
 // Seed roles and admin user

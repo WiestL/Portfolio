@@ -5,7 +5,7 @@ namespace ProjectPortfolio.Models
     public class User : IdentityUser
     {
         // Custom properties
-        public string? CustomUsername { get; set; } // Rename Username to avoid confusion with IdentityUser.UserName
+        public string? CustomUsername { get; set; }
 
         // Additional properties can go here
     }

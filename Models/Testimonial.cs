@@ -3,8 +3,8 @@
     public class Testimonial
     {
         public int TestimonialId { get; set; }
-        public string AuthorName { get; set; }
-        public string Content { get; set; }
+        public string AuthorName { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
         public DateTime DatePosted { get; set; }
 
         // Foreign Key
