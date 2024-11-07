@@ -214,7 +214,7 @@ function createMuseum(numProjects) {
     // Calculate museum dimensions based on the number of projects
     const projectSpacing = 20;
     const museumWidth = Math.max(30, numProjects * projectSpacing);
-    const museumDepth = 15;
+    const museumDepth = 20;
     const openingSize = 10;
 
     // Validate dimensions
@@ -235,11 +235,11 @@ function createMuseum(numProjects) {
     const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
 
     // Create walls with an opening for entrance
-    createWall(museumWidth, 2, 0.5, 0, 1, -museumDepth / 2, wallMaterial);  // Back wall
-    createWall(museumWidth / 2 - openingSize / 2, 2, 0.5, -museumWidth / 4 - openingSize / 4, 1, museumDepth / 2, wallMaterial);  // Left part of front wall
-    createWall(museumWidth / 2 - openingSize / 2, 2, 0.5, museumWidth / 4 + openingSize / 4, 1, museumDepth / 2, wallMaterial);  // Right part of front wall
-    createWall(0.5, 2, museumDepth, -museumWidth / 2, 1, 0, wallMaterial);  // Left wall
-    createWall(0.5, 2, museumDepth, museumWidth / 2, 1, 0, wallMaterial);  // Right wall
+    createWall(museumWidth, 10, 0.5, 0, 5, -museumDepth / 2, wallMaterial);  // Back wall
+    createWall(museumWidth / 2 - openingSize / 2, 10, 0.5, -museumWidth / 4 - openingSize / 4, 5, museumDepth / 2, wallMaterial);  // Left part of front wall
+    createWall(museumWidth / 2 - openingSize / 2, 10, 0.5, museumWidth / 4 + openingSize / 4, 5, museumDepth / 2, wallMaterial);  // Right part of front wall
+    createWall(0.5, 10, museumDepth, -museumWidth / 2, 5, 0, wallMaterial);  // Left wall
+    createWall(0.5, 10, museumDepth, museumWidth / 2, 5, 0, wallMaterial);  // Right wall
 }
 
 // Helper function to create a wall with bounding box and add to the scene
@@ -271,7 +271,7 @@ function createAddTestimonialBox() {
     const boxGeometry = new THREE.PlaneGeometry(3, 1);
     const boxMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000, opacity: 0.5, transparent: true });
     addTestimonialBox = new THREE.Mesh(boxGeometry, boxMaterial);
-    addTestimonialBox.position.set(-3, 0.001, 12);  // Slightly above ground to avoid z-fighting
+    addTestimonialBox.position.set(3, 0.001, 12);  // Slightly above ground to avoid z-fighting
     addTestimonialBox.rotation.x = -Math.PI / 2;
     addTestimonialBox.userData = { isTestimonialBox: true };
     scene.add(addTestimonialBox);
@@ -317,7 +317,7 @@ function createProjectDropdown() {
         transparent: true,
     });
     projectDropdown = new THREE.Mesh(dropdownGeometry, dropdownMaterial);
-    projectDropdown.position.set(3, 0.001, 12); // Position next to the testimonial box
+    projectDropdown.position.set(-3, 0.001, 12); // Position next to the testimonial box
     projectDropdown.rotation.x = -Math.PI / 2;
     scene.add(projectDropdown);
 
@@ -671,7 +671,7 @@ function addInteractionBoxAndLabel(pedestal, project) {
     if (cachedFont) {
         const linkTextGeometry = new THREE.TextGeometry('Link', {
             font: cachedFont,
-            size: 0.2, // Smaller size for scaled-down objects
+            size: 0.3, // Smaller size for scaled-down objects
             height: 0.01,
             curveSegments: 12,
         });
