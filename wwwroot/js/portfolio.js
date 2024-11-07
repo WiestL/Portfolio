@@ -12,8 +12,12 @@ let clock = new THREE.Clock(); // Keeps track of time between frames
 let skillsSigns = [];    // Store skill signs
 let categoriesSigns = []; // Store category signs
 let wallMeshes = []; // Track each wall object for proper removal
+let floor; // Reference to the floor mesh
+let pedestalModel; // Reference to the loaded pedestal model
+let testimonialMeshes = []; // Array to store testimonial meshes
 // Variables for materials
 const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
+const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x89CFF0 });
 
 
 // New variables for proximity detection
@@ -44,7 +48,10 @@ async function init() {
         const numProjects = projects.length;
 
         createMuseum(numProjects); // Pass the correct number of projects
-        loadTestimonials(); // Proceed with testimonials after loading projects
+
+        // Extract project IDs
+        const visibleProjectIds = projects.map(project => project.projectId);
+        loadTestimonials(visibleProjectIds); // Proceed with testimonials after loading projects
 
         animate(); // Start the animation loop
     });
@@ -123,51 +130,79 @@ function createSkillAndCategorySigns(skills, categories) {
         return;
     }
 
-    // Position offset for signs
-    let skillOffsetX = -10;
-    let categoryOffsetX = 10;
-    const offsetY = 0.1;
+    // Define grid parameters
+    const signsPerRow = 4; // Number of signs per row
+    const gridSpacing = 5; // Spacing between signs
+    const signSize = { width: 4, height: 1 };
+    const skillStartPosition = new THREE.Vector3(-10, 0.1, 20);
+    const categoryStartPosition = new THREE.Vector3(10, 0.1, 20);
 
-    // Create skill signs
-    skills.forEach((skill, index) => {
-        const skillText = new THREE.TextGeometry(skill.name, {
+    // Helper function to create a sign
+    function createSign(text, position, color) {
+        const signGeometry = new THREE.BoxGeometry(signSize.width, signSize.height, 0.2);
+        const signMaterial = new THREE.MeshLambertMaterial({ color: color });
+        const signMesh = new THREE.Mesh(signGeometry, signMaterial);
+        signMesh.position.copy(position);
+
+        // Create text mesh
+        const textGeometry = new THREE.TextGeometry(text, {
             font: cachedFont,
-            size: 0.5,
+            size: 0.3,
             height: 0.01,
             curveSegments: 12,
         });
-        const skillMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
-        const skillMesh = new THREE.Mesh(skillText, skillMaterial);
-        skillMesh.position.set(skillOffsetX, offsetY, 15 + index * 2); // Adjust position as needed
-        scene.add(skillMesh);
+        const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
+        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+        textMesh.position.set(position.x - signSize.width / 2 + 0.2, position.y + signSize.height / 2 - 0.2, position.z + 0.11);
+        textMesh.rotation.y = 0;
+
+        scene.add(signMesh);
+        scene.add(textMesh);
+
+        return signMesh;
+    }
+
+    // Create skill signs
+    skills.forEach((skill, index) => {
+        const row = Math.floor(index / signsPerRow);
+        const col = index % signsPerRow;
+
+        const position = new THREE.Vector3(
+            skillStartPosition.x + col * gridSpacing,
+            skillStartPosition.y + signSize.height / 2,
+            skillStartPosition.z + row * gridSpacing
+        );
+
+        const signMesh = createSign(skill.name, position, 0x00ff00); // Green color for skills
 
         // Add bounding box for interaction
         skillsSigns.push({
             skillId: skill.skillId,
-            mesh: skillMesh
+            mesh: signMesh
         });
     });
 
     // Create category signs
     categories.forEach((category, index) => {
-        const categoryText = new THREE.TextGeometry(category.name, {
-            font: cachedFont,
-            size: 0.5,
-            height: 0.01,
-            curveSegments: 12,
-        });
-        const categoryMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff });
-        const categoryMesh = new THREE.Mesh(categoryText, categoryMaterial);
-        categoryMesh.position.set(categoryOffsetX, offsetY, 15 + index * 2); // Adjust position as needed
-        scene.add(categoryMesh);
+        const row = Math.floor(index / signsPerRow);
+        const col = index % signsPerRow;
+
+        const position = new THREE.Vector3(
+            categoryStartPosition.x + col * gridSpacing,
+            categoryStartPosition.y + signSize.height / 2,
+            categoryStartPosition.z + row * gridSpacing
+        );
+
+        const signMesh = createSign(category.name, position, 0xffff00); // Blue color for categories
 
         // Add bounding box for interaction
         categoriesSigns.push({
             categoryId: category.categoryId,
-            mesh: categoryMesh
+            mesh: signMesh
         });
     });
 }
+
 
 function createControlInstructions() {
     if (!cachedFont) {
@@ -275,7 +310,7 @@ function createMuseum(numProjects) {
     numProjects = isNaN(numProjects) ? 0 : numProjects;
 
     // Calculate museum dimensions based on the number of projects
-    const projectSpacing = 20;
+    const projectSpacing = 15;
     const museumWidth = Math.max(30, numProjects * projectSpacing);
     const museumDepth = 20;
     const openingSize = 10;
@@ -288,18 +323,18 @@ function createMuseum(numProjects) {
 
     console.log(`Museum dimensions: width=${museumWidth}, depth=${museumDepth}, openingSize=${openingSize}`);
 
-    const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x89CFF0 });
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(museumWidth, museumDepth), floorMaterial);
+    
+    floor = new THREE.Mesh(new THREE.PlaneGeometry(museumWidth, museumDepth), floorMaterial);
     floor.rotation.x = -Math.PI / 2;
     scene.add(floor);
     logGeometry(floor.geometry, 'Floor');
 
     // Create walls with an opening for entrance
-    createWall(museumWidth, 10, 0.5, 0, 5, -museumDepth / 2, wallMaterial);  // Back wall
-    createWall(museumWidth / 2 - openingSize / 2, 10, 0.5, -museumWidth / 4 - openingSize / 4, 5, museumDepth / 2, wallMaterial);  // Left part of front wall
-    createWall(museumWidth / 2 - openingSize / 2, 10, 0.5, museumWidth / 4 + openingSize / 4, 5, museumDepth / 2, wallMaterial);  // Right part of front wall
-    createWall(0.5, 10, museumDepth, -museumWidth / 2, 5, 0, wallMaterial);  // Left wall
-    createWall(0.5, 10, museumDepth, museumWidth / 2, 5, 0, wallMaterial);  // Right wall
+    createWall(museumWidth, 5, 0.5, 0, 3, -museumDepth / 2, wallMaterial);  // Back wall
+    createWall(museumWidth / 2 - openingSize / 2, 5, 0.5, -museumWidth / 4 - openingSize / 4, 3, museumDepth / 2, wallMaterial);  // Left part of front wall
+    createWall(museumWidth / 2 - openingSize / 2, 5, 0.5, museumWidth / 4 + openingSize / 4, 3, museumDepth / 2, wallMaterial);  // Right part of front wall
+    createWall(0.5, 5, museumDepth, -museumWidth / 2, 3, 0, wallMaterial);  // Left wall
+    createWall(0.5, 5, museumDepth, museumWidth / 2, 3, 0, wallMaterial);  // Right wall
 }
 
 // Helper function to create a wall with bounding box and add to the scene
@@ -645,67 +680,78 @@ let pedestalBoxes = [];  // For collision detection with the character
 let collisionBoxes = []; // To store collision boxes
 
 function createPedestals(projects) {
-    const loader = new THREE.GLTFLoader();
+    if (pedestalModel) {
+        // Model is already loaded, proceed to create pedestals
+        createPedestalsFromModel(pedestalModel, projects);
+    } else {
+        // Load the model
+        const loader = new THREE.GLTFLoader();
 
-    loader.load('/3DModels/LowPolyPedestal.glb', (gltf) => {
-        const model = gltf.scene;
-        model.scale.set(0.0025, 0.0025, 0.0025);
-
-        const museumWidth = Math.max(30, projects.length * 20);
-        const startX = -museumWidth / 2 + 10;
-        const projectSpacing = museumWidth / (projects.length + 1);
-
-        projects.forEach((project, index) => {
-            const pedestal = model.clone();
-            pedestal.position.set(startX + index * projectSpacing, 0, 0);
-            pedestal.userData = project;
-            scene.add(pedestal);
-
-            pedestals.push(pedestal);
-
-            // Calculate the pedestal's bounding box size
-            const pedestalBox3 = new THREE.Box3().setFromObject(pedestal);
-            const size = new THREE.Vector3();
-            pedestalBox3.getSize(size);
-
-            size.multiplyScalar(0.6);
-
-            // Create the collision box with the new size
-            const collisionBoxGeometry = new THREE.BoxGeometry(size.x, size.y, size.z);
-            const collisionBoxMaterial = new THREE.MeshBasicMaterial({
-                visible: false,
-            });
-            const collisionBox = new THREE.Mesh(collisionBoxGeometry, collisionBoxMaterial);
-
-            // Position the collision box to match the pedestal
-            collisionBox.position.copy(pedestal.position);
-            collisionBox.position.y += size.y / 2; // Center vertically
-            scene.add(collisionBox);
-
-            // Update bounding box for the collision box
-            const pedestalBox = new THREE.Box3().setFromObject(collisionBox);
-            pedestalBoxes.push(pedestalBox);
-
-            // Store the collision box for updates
-            collisionBoxes.push(collisionBox);
-
-            // Create the proximity sphere
-            const proximityRadius = 5; // Adjust this value as needed
-            const proximitySphere = new THREE.Sphere(pedestal.position.clone(), proximityRadius);
-            proximitySpheres.push(proximitySphere);
-
-            // Initialize visibility and meshes arrays
-            projectInfoVisible.push(false);
-            pedestalInfoMeshes.push(null);
-
-            // Add the link box and label for each pedestal
-            addInteractionBoxAndLabel(pedestal, project);
+        loader.load('/3DModels/LowPolyPedestal.glb', (gltf) => {
+            pedestalModel = gltf.scene;
+            pedestalModel.scale.set(0.0025, 0.0025, 0.0025);
+            createPedestalsFromModel(pedestalModel, projects);
+        }, undefined, (error) => {
+            console.error('An error occurred while loading the pedestal model:', error);
         });
-    }, undefined, (error) => {
-        console.error('An error occurred while loading the pedestal model:', error);
+    }
+}
+function createPedestalsFromModel(model, projects) {
+    const museumWidth = Math.max(30, projects.length * 20);
+    const startX = -museumWidth / 2 + 10;
+    const totalProjects = projects.length;
+    const projectSpacing = 15; // Fixed spacing between projects
+
+
+    projects.forEach((project, index) => {
+        // Clone the pedestal model for each project
+        const pedestal = model.clone();
+
+        // Calculate the position to center the projects
+        const positionX = (index - (totalProjects - 1) / 2) * projectSpacing;
+        pedestal.position.set(positionX, 0, 0);
+        pedestal.userData = project;
+        scene.add(pedestal);
+
+        // Add pedestal to the array for tracking
+        pedestals.push(pedestal);
+
+        // Calculate the pedestal's bounding box size
+        const pedestalBox3 = new THREE.Box3().setFromObject(pedestal);
+        const size = new THREE.Vector3();
+        pedestalBox3.getSize(size);
+        size.multiplyScalar(0.6);
+
+        // Create the collision box with the new size
+        const collisionBoxGeometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+        const collisionBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
+        const collisionBox = new THREE.Mesh(collisionBoxGeometry, collisionBoxMaterial);
+
+        // Position the collision box to match the pedestal
+        collisionBox.position.copy(pedestal.position);
+        collisionBox.position.y += size.y / 2; // Center vertically
+        scene.add(collisionBox);
+
+        // Update bounding box for the collision box
+        const pedestalBox = new THREE.Box3().setFromObject(collisionBox);
+        pedestalBoxes.push(pedestalBox);
+
+        // Store the collision box for updates
+        collisionBoxes.push(collisionBox);
+
+        // Create the proximity sphere for displaying project info when the character is near
+        const proximityRadius = 5; // Adjust this value as needed
+        const proximitySphere = new THREE.Sphere(pedestal.position.clone(), proximityRadius);
+        proximitySpheres.push(proximitySphere);
+
+        // Initialize visibility and meshes arrays for project info
+        projectInfoVisible.push(false);
+        pedestalInfoMeshes.push(null);
+
+        // Add the interaction link box and label for each pedestal
+        addInteractionBoxAndLabel(pedestal, project);
     });
 }
-
 function addInteractionBoxAndLabel(pedestal, project) {
     // Create a smaller interaction box based on the pedestal's scale
     const interactionBoxGeometry = new THREE.PlaneGeometry(1, 1); // Smaller box size
@@ -718,16 +764,17 @@ function addInteractionBoxAndLabel(pedestal, project) {
 
     interactionBoxMesh.userData = { url: project.projectUrl };
     scene.add(interactionBoxMesh);
-
     const interactionBox3 = new THREE.Box3().setFromObject(interactionBoxMesh);
-    interactionBoxes.push({
+
+    const interactionBoxEntry = {
         box: interactionBox3,
         type: 'link',
         mesh: interactionBoxMesh,
-        url: project.projectUrl
-    });
+        url: project.projectUrl,
+        textMesh: null // Placeholder for the Link text mesh
+    };
 
-    // Add "Link" text using cached font, adjusting size and position for visibility
+    // Add "Link" text using cached font
     if (cachedFont) {
         const linkTextGeometry = new THREE.TextGeometry('Link', {
             font: cachedFont,
@@ -742,9 +789,14 @@ function addInteractionBoxAndLabel(pedestal, project) {
         linkTextMesh.rotation.set(-Math.PI / 2, 0, 0);  // Rotate to lay flat on the interaction box
 
         scene.add(linkTextMesh);
+
+        // Store the text mesh in the interaction box entry
+        interactionBoxEntry.textMesh = linkTextMesh;
     } else {
         console.error('Font not loaded yet.');
     }
+
+    interactionBoxes.push(interactionBoxEntry);
 }
 
 // Fetch and Display Project Information
@@ -885,9 +937,9 @@ function handleInteraction() {
     // Check for interactions with skill signs
     for (let i = 0; i < skillsSigns.length; i++) {
         const skillSign = skillsSigns[i];
-        const skillBox = new THREE.Box3().setFromObject(skillSign.mesh); // Update bounding box for the sign
+        const signBox = new THREE.Box3().setFromObject(skillSign.mesh); // Update bounding box for the sign
 
-        if (characterBox.intersectsBox(skillBox)) {
+        if (characterBox.intersectsBox(signBox)) {
             console.log(`Interacting with skill sign: ${skillSign.skillId}`);
             filterProjects(skillSign.skillId, null); // Filter by the skill associated with this sign
             return;
@@ -897,9 +949,9 @@ function handleInteraction() {
     // Check for interactions with category signs
     for (let i = 0; i < categoriesSigns.length; i++) {
         const categorySign = categoriesSigns[i];
-        const categoryBox = new THREE.Box3().setFromObject(categorySign.mesh); // Update bounding box for the sign
+        const signBox = new THREE.Box3().setFromObject(categorySign.mesh); // Update bounding box for the sign
 
-        if (characterBox.intersectsBox(categoryBox)) {
+        if (characterBox.intersectsBox(signBox)) {
             console.log(`Interacting with category sign: ${categorySign.categoryId}`);
             filterProjects(null, categorySign.categoryId); // Filter by the category associated with this sign
             return;
@@ -1090,7 +1142,7 @@ function handleTextInput(event) {
 }
 
 // Load testimonials and display them
-function loadTestimonials() {
+function loadTestimonials(visibleProjectIds = []) {
     fetch('/api/testimonialsAPI')
         .then(response => response.json())
         .then(result => {
@@ -1102,10 +1154,13 @@ function loadTestimonials() {
                 // Group testimonials by projectId
                 testimonials.forEach(testimonial => {
                     const projectId = testimonial.projectId;
-                    if (!testimonialsByProject[projectId]) {
-                        testimonialsByProject[projectId] = [];
+                    // Include testimonials if visibleProjectIds is empty or includes the projectId
+                    if (visibleProjectIds.length === 0 || visibleProjectIds.includes(projectId)) {
+                        if (!testimonialsByProject[projectId]) {
+                            testimonialsByProject[projectId] = [];
+                        }
+                        testimonialsByProject[projectId].push(testimonial);
                     }
-                    testimonialsByProject[projectId].push(testimonial);
                 });
 
                 // Render each group of testimonials
@@ -1140,6 +1195,10 @@ function loadTestimonials() {
 
                             // Apply fade-in effect
                             fadeInText([textMesh]);
+
+                            // Store the testimonial mesh
+                            textMesh.userData.projectId = projectId;
+                            testimonialMeshes.push(textMesh);
                         });
                     } else {
                         console.error(`No pedestal found for project ID ${projectId} or font not loaded`);
@@ -1153,6 +1212,8 @@ function loadTestimonials() {
             console.error('Error loading testimonials:', error);
         });
 }
+
+
 
 // Stop spacebar from affecting scrolling
 window.addEventListener('keydown', function (e) {
@@ -1212,40 +1273,80 @@ function displayFilteredProjects(filteredProjects) {
         return;
     }
 
-    // Hide all pedestals, link boxes, and project info initially
-    pedestals.forEach((pedestal, index) => {
-        pedestal.visible = false;
-        if (interactionBoxes[index]) interactionBoxes[index].mesh.visible = false; // Hide link boxes
-        if (pedestalInfoMeshes[index]) {
-            pedestalInfoMeshes[index].forEach(mesh => {
-                mesh.visible = false; // Hide associated project info
+    // Remove all existing pedestals and their associated components
+    removeAllPedestals();
+
+    // Adjust museum size to fit the visible pedestals
+    resizeMuseum(filteredProjects.length);
+
+    // Re-create the pedestals based on the filtered projects
+    createPedestals(filteredProjects);
+
+    // Load testimonials for the visible projects
+    const visibleProjectIds = filteredProjects.map(p => p.projectId);
+    loadTestimonials(visibleProjectIds);
+}
+function removeAllPedestals() {
+    // Remove pedestals
+    pedestals.forEach(pedestal => {
+        scene.remove(pedestal);
+        if (pedestal.geometry) pedestal.geometry.dispose();
+        if (pedestal.material) pedestal.material.dispose();
+    });
+    pedestals = [];
+
+    // Remove interaction boxes (link boxes)
+    interactionBoxes = interactionBoxes.filter(entry => {
+        if (entry.type === 'link') {
+            // Remove the interaction box mesh
+            scene.remove(entry.mesh);
+            if (entry.mesh.geometry) entry.mesh.geometry.dispose();
+            if (entry.mesh.material) entry.mesh.material.dispose();
+
+            // Remove the associated Link text mesh
+            if (entry.textMesh) {
+                scene.remove(entry.textMesh);
+                if (entry.textMesh.geometry) entry.textMesh.geometry.dispose();
+                if (entry.textMesh.material) entry.textMesh.material.dispose();
+            }
+
+            return false; // Remove from interactionBoxes array
+        }
+        return true; // Keep other types (e.g., dropdown, testimonial)
+    });
+
+    // Remove project info meshes (titles and descriptions)
+    pedestalInfoMeshes.forEach(meshes => {
+        if (meshes) {
+            meshes.forEach(mesh => {
+                scene.remove(mesh);
+                if (mesh.geometry) mesh.geometry.dispose();
+                if (mesh.material) mesh.material.dispose();
             });
         }
     });
+    pedestalInfoMeshes = [];
 
-    // Show only the filtered projects
-    const visiblePedestals = [];
-    filteredProjects.forEach(project => {
-        const matchingPedestalIndex = pedestals.findIndex(p => p.userData.projectId === project.projectId);
-        if (matchingPedestalIndex !== -1) {
-            const matchingPedestal = pedestals[matchingPedestalIndex];
-            matchingPedestal.visible = true;
-            visiblePedestals.push(matchingPedestal);
+    // Remove proximity spheres and related arrays
+    proximitySpheres = [];
+    projectInfoVisible = [];
 
-            if (interactionBoxes[matchingPedestalIndex]) {
-                interactionBoxes[matchingPedestalIndex].mesh.visible = true; // Show link box
-            }
-
-            if (pedestalInfoMeshes[matchingPedestalIndex]) {
-                pedestalInfoMeshes[matchingPedestalIndex].forEach(mesh => {
-                    mesh.visible = true; // Show project info
-                });
-            }
-        }
+    // Remove collision boxes
+    collisionBoxes.forEach(box => {
+        scene.remove(box);
     });
+    collisionBoxes = [];
 
-    // Adjust museum size to fit the visible pedestals
-    resizeMuseum(visiblePedestals.length);
+    // Remove pedestal bounding boxes
+    pedestalBoxes = [];
+
+    // Remove testimonial meshes
+    testimonialMeshes.forEach(mesh => {
+        scene.remove(mesh);
+        if (mesh.geometry) mesh.geometry.dispose();
+        if (mesh.material) mesh.material.dispose();
+    });
+    testimonialMeshes = [];
 }
 
 function clearWalls() {
@@ -1299,38 +1400,39 @@ function clearWalls() {
 
 function resizeMuseum(visibleProjectCount) {
     clearWalls();
-
-    const projectSpacing = 20;
+    // Remove old floor
+    if (floor) {
+        scene.remove(floor);
+        floor.geometry.dispose();
+        floor.material.dispose();
+    }
+    const projectSpacing = 15;
     const museumWidth = Math.max(30, visibleProjectCount * projectSpacing);
     const museumDepth = 20;
     const openingSize = 10;
 
+    floor = new THREE.Mesh(new THREE.PlaneGeometry(museumWidth, museumDepth), floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
+
     // Re-create walls and store references in wallMeshes
-    const backWall = createWall(museumWidth, 10, 0.5, 0, 5, -museumDepth / 2, wallMaterial);
+    const backWall = createWall(museumWidth, 5, 0.5, 0, 3, -museumDepth / 2, wallMaterial);
     if (backWall) wallMeshes.push(backWall);
 
-    const leftFrontWall = createWall(museumWidth / 2 - openingSize / 2, 10, 0.5, -museumWidth / 4 - openingSize / 4, 5, museumDepth / 2, wallMaterial);
+    const leftFrontWall = createWall(museumWidth / 2 - openingSize / 2, 5, 0.5, -museumWidth / 4 - openingSize / 4, 3, museumDepth / 2, wallMaterial);
     if (leftFrontWall) wallMeshes.push(leftFrontWall);
 
-    const rightFrontWall = createWall(museumWidth / 2 - openingSize / 2, 10, 0.5, museumWidth / 4 + openingSize / 4, 5, museumDepth / 2, wallMaterial);
+    const rightFrontWall = createWall(museumWidth / 2 - openingSize / 2, 7.5, 0.5, museumWidth / 4 + openingSize / 4, 3, museumDepth / 2, wallMaterial);
     if (rightFrontWall) wallMeshes.push(rightFrontWall);
 
-    const leftWall = createWall(0.5, 10, museumDepth, -museumWidth / 2, 5, 0, wallMaterial);
+    const leftWall = createWall(0.5, 5, museumDepth, -museumWidth / 2, 3, 0, wallMaterial);
     if (leftWall) wallMeshes.push(leftWall);
 
-    const rightWall = createWall(0.5, 10, museumDepth, museumWidth / 2, 5, 0, wallMaterial);
+    const rightWall = createWall(0.5, 5, museumDepth, museumWidth / 2, 3, 0, wallMaterial);
     if (rightWall) wallMeshes.push(rightWall);
 
     console.log(`Museum resized to width=${museumWidth} based on ${visibleProjectCount} visible projects.`);
-    console.log("Scene children after wall resize:", scene.children);
 }
-
-
-
-
-
-
-
 
 async function fetchSkills() {
     try {
@@ -1357,10 +1459,6 @@ async function fetchCategories() {
         return [];
     }
 }
-
-
-
-
 
 // Start the scene once the window has loaded
 window.onload = function () {
