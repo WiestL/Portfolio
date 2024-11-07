@@ -9,5 +9,4 @@
         // Navigation Properties
         public ICollection<ProjectCategory>? ProjectCategories { get; set; }
     }
-
 }

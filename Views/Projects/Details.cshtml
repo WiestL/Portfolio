@@ -17,6 +17,36 @@
 
     <h4>Date Created</h4>
     <p>@Model.DateCreated.ToShortDateString()</p>
+
+    <h4>Skills</h4>
+    <ul>
+        @if (Model.ProjectSkills != null && Model.ProjectSkills.Any())
+        {
+            foreach (var skill in Model.ProjectSkills)
+            {
+                <li>@skill.Skill.Name</li>
+            }
+        }
+        else
+        {
+            <li>No skills associated.</li>
+        }
+    </ul>
+
+    <h4>Categories</h4>
+    <ul>
+        @if (Model.ProjectCategories != null && Model.ProjectCategories.Any())
+        {
+            foreach (var category in Model.ProjectCategories)
+            {
+                <li>@category.Category.Name</li>
+            }
+        }
+        else
+        {
+            <li>No categories associated.</li>
+        }
+    </ul>
 </div>
 
 <p>

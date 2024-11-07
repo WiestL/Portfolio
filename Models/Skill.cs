@@ -9,5 +9,4 @@
         // Navigation Properties
         public ICollection<ProjectSkill>? ProjectSkills { get; set; }
     }
-
 }

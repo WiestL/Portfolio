@@ -9,6 +9,12 @@ let testimonialDisplayTextMesh;
 let projectNameTextMesh;
 let cachedFont; // Cache the font for reuse
 let clock = new THREE.Clock(); // Keeps track of time between frames
+let skillsSigns = [];    // Store skill signs
+let categoriesSigns = []; // Store category signs
+let wallMeshes = []; // Track each wall object for proper removal
+// Variables for materials
+const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
+
 
 // New variables for proximity detection
 let proximitySpheres = []; // Array to store proximity spheres for each pedestal
@@ -42,6 +48,11 @@ async function init() {
 
         animate(); // Start the animation loop
     });
+
+
+    const skills = await fetchSkills();       // Fetch skills from API
+    const categories = await fetchCategories(); // Fetch categories from API
+    createSkillAndCategorySigns(skills, categories);
 
     // Set up event listeners
     window.addEventListener('resize', onWindowResize, false);
@@ -104,6 +115,58 @@ function checkProximityToPedestals() {
             projectInfoVisible[i] = false;
         }
     }
+}
+function createSkillAndCategorySigns(skills, categories) {
+    // Ensure font is loaded
+    if (!cachedFont) {
+        console.error("Font not loaded yet.");
+        return;
+    }
+
+    // Position offset for signs
+    let skillOffsetX = -10;
+    let categoryOffsetX = 10;
+    const offsetY = 0.1;
+
+    // Create skill signs
+    skills.forEach((skill, index) => {
+        const skillText = new THREE.TextGeometry(skill.name, {
+            font: cachedFont,
+            size: 0.5,
+            height: 0.01,
+            curveSegments: 12,
+        });
+        const skillMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+        const skillMesh = new THREE.Mesh(skillText, skillMaterial);
+        skillMesh.position.set(skillOffsetX, offsetY, 15 + index * 2); // Adjust position as needed
+        scene.add(skillMesh);
+
+        // Add bounding box for interaction
+        skillsSigns.push({
+            skillId: skill.skillId,
+            mesh: skillMesh
+        });
+    });
+
+    // Create category signs
+    categories.forEach((category, index) => {
+        const categoryText = new THREE.TextGeometry(category.name, {
+            font: cachedFont,
+            size: 0.5,
+            height: 0.01,
+            curveSegments: 12,
+        });
+        const categoryMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff });
+        const categoryMesh = new THREE.Mesh(categoryText, categoryMaterial);
+        categoryMesh.position.set(categoryOffsetX, offsetY, 15 + index * 2); // Adjust position as needed
+        scene.add(categoryMesh);
+
+        // Add bounding box for interaction
+        categoriesSigns.push({
+            categoryId: category.categoryId,
+            mesh: categoryMesh
+        });
+    });
 }
 
 function createControlInstructions() {
@@ -231,9 +294,6 @@ function createMuseum(numProjects) {
     scene.add(floor);
     logGeometry(floor.geometry, 'Floor');
 
-    // Wall material
-    const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
-
     // Create walls with an opening for entrance
     createWall(museumWidth, 10, 0.5, 0, 5, -museumDepth / 2, wallMaterial);  // Back wall
     createWall(museumWidth / 2 - openingSize / 2, 10, 0.5, -museumWidth / 4 - openingSize / 4, 5, museumDepth / 2, wallMaterial);  // Left part of front wall
@@ -246,24 +306,24 @@ function createMuseum(numProjects) {
 function createWall(width, height, depth, x, y, z, material) {
     if (isNaN(width) || isNaN(height) || isNaN(depth) || isNaN(x) || isNaN(y) || isNaN(z)) {
         console.error('NaN detected in createWall parameters', { width, height, depth, x, y, z });
-        return; // Exit the function if any parameter is invalid
+        return null;
     }
-
-    console.log(`Creating wall with dimensions: width=${width}, height=${height}, depth=${depth}, position=(${x}, ${y}, ${z})`);
 
     const wall = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
     wall.position.set(x, y, z);
+    wall.userData = { type: 'museumWall' }; // Set userData property for easy identification
     scene.add(wall);
-    logGeometry(wall.geometry, `Wall at (${x}, ${y}, ${z})`);
 
-    // Add a visible edge for clarity
     const edge = new THREE.EdgesGeometry(wall.geometry);
     const line = new THREE.LineSegments(edge, new THREE.LineBasicMaterial({ color: 0x000000 }));
     line.position.copy(wall.position);
     scene.add(line);
 
     wallBoxes.push(new THREE.Box3().setFromObject(wall));
+
+    return { wall, line };
 }
+
 
 // Create 'Add Testimonial' interaction box
 let addTestimonialBox;
@@ -780,6 +840,7 @@ function handleInteraction() {
     // Update the character's bounding box
     characterBox.setFromObject(character);
 
+    // Check if the dropdown is open and handle project selection
     if (dropdownOpen) {
         if (projectNameEntries.length === 0) {
             console.warn('Project names are not loaded yet.');
@@ -821,7 +882,31 @@ function handleInteraction() {
         return;
     }
 
-    // Check for interactions with other boxes
+    // Check for interactions with skill signs
+    for (let i = 0; i < skillsSigns.length; i++) {
+        const skillSign = skillsSigns[i];
+        const skillBox = new THREE.Box3().setFromObject(skillSign.mesh); // Update bounding box for the sign
+
+        if (characterBox.intersectsBox(skillBox)) {
+            console.log(`Interacting with skill sign: ${skillSign.skillId}`);
+            filterProjects(skillSign.skillId, null); // Filter by the skill associated with this sign
+            return;
+        }
+    }
+
+    // Check for interactions with category signs
+    for (let i = 0; i < categoriesSigns.length; i++) {
+        const categorySign = categoriesSigns[i];
+        const categoryBox = new THREE.Box3().setFromObject(categorySign.mesh); // Update bounding box for the sign
+
+        if (characterBox.intersectsBox(categoryBox)) {
+            console.log(`Interacting with category sign: ${categorySign.categoryId}`);
+            filterProjects(null, categorySign.categoryId); // Filter by the category associated with this sign
+            return;
+        }
+    }
+
+    // Existing interaction logic for other interaction boxes (dropdowns, testimonials, links)
     let foundInteraction = false;
     for (let i = 0; i < interactionBoxes.length; i++) {
         const interactionBoxEntry = interactionBoxes[i];
@@ -869,6 +954,7 @@ function handleInteraction() {
         console.log("Character is not on any interaction box.");
     }
 }
+
 
 // Enter testimonial mode
 let testimonialTextField;
@@ -1094,6 +1180,187 @@ function animate() {
     updateMovement();  // Update character movement
     renderer.render(scene, camera);
 }
+
+
+async function filterProjects(skillId = null, categoryId = null) {
+    try {
+        // Construct the query parameters based on the provided skill or category
+        let url = '/api/ProjectsAPI/filter';
+        if (skillId) url += `?skillId=${skillId}`;
+        if (categoryId) url += `${skillId ? '&' : '?'}categoryId=${categoryId}`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch filtered projects: ${response.status} ${response.statusText}`);
+        }
+
+        const result = await response.json();
+
+        // Check if the response has a $values property; if so, use it
+        const projects = Array.isArray(result) ? result : result.$values || [];
+
+        // Update the 3D scene to show only filtered projects
+        displayFilteredProjects(projects);
+    } catch (error) {
+        console.error('Error filtering projects:', error);
+    }
+}
+
+function displayFilteredProjects(filteredProjects) {
+    if (!Array.isArray(filteredProjects)) {
+        console.error('Expected an array for filtered projects but received:', filteredProjects);
+        return;
+    }
+
+    // Hide all pedestals, link boxes, and project info initially
+    pedestals.forEach((pedestal, index) => {
+        pedestal.visible = false;
+        if (interactionBoxes[index]) interactionBoxes[index].mesh.visible = false; // Hide link boxes
+        if (pedestalInfoMeshes[index]) {
+            pedestalInfoMeshes[index].forEach(mesh => {
+                mesh.visible = false; // Hide associated project info
+            });
+        }
+    });
+
+    // Show only the filtered projects
+    const visiblePedestals = [];
+    filteredProjects.forEach(project => {
+        const matchingPedestalIndex = pedestals.findIndex(p => p.userData.projectId === project.projectId);
+        if (matchingPedestalIndex !== -1) {
+            const matchingPedestal = pedestals[matchingPedestalIndex];
+            matchingPedestal.visible = true;
+            visiblePedestals.push(matchingPedestal);
+
+            if (interactionBoxes[matchingPedestalIndex]) {
+                interactionBoxes[matchingPedestalIndex].mesh.visible = true; // Show link box
+            }
+
+            if (pedestalInfoMeshes[matchingPedestalIndex]) {
+                pedestalInfoMeshes[matchingPedestalIndex].forEach(mesh => {
+                    mesh.visible = true; // Show project info
+                });
+            }
+        }
+    });
+
+    // Adjust museum size to fit the visible pedestals
+    resizeMuseum(visiblePedestals.length);
+}
+
+function clearWalls() {
+    // Remove tracked walls and lines specifically
+    wallMeshes.forEach(({ wall, line }, index) => {
+        if (wall) {
+            scene.remove(wall);
+            wall.geometry.dispose();
+            if (Array.isArray(wall.material)) {
+                wall.material.forEach(material => material.dispose());
+            } else {
+                wall.material.dispose();
+            }
+            console.log(`Wall ${index} removed and disposed`);
+        }
+
+        if (line) {
+            scene.remove(line);
+            line.geometry.dispose();
+            line.material.dispose();
+            console.log(`Wall edge line ${index} removed and disposed`);
+        }
+    });
+
+    // Clear the arrays after removal
+    wallMeshes.length = 0;
+    wallBoxes.length = 0;
+
+    // Double-check for any lingering walls specifically based on wall properties
+    scene.children = scene.children.filter(child => {
+        if (
+            child.material === wallMaterial ||
+            (child.userData && child.userData.type === 'museumWall')
+        ) {
+            scene.remove(child);
+            child.geometry.dispose();
+            if (child.material instanceof Array) {
+                child.material.forEach(mat => mat.dispose());
+            } else if (child.material) {
+                child.material.dispose();
+            }
+            console.log("Removed lingering wall from scene.children");
+            return false; // Don't keep this child in scene.children
+        }
+        return true; // Keep non-wall elements
+    });
+
+    console.log("All wall meshes, lines, and lingering wall children removed.");
+}
+
+
+function resizeMuseum(visibleProjectCount) {
+    clearWalls();
+
+    const projectSpacing = 20;
+    const museumWidth = Math.max(30, visibleProjectCount * projectSpacing);
+    const museumDepth = 20;
+    const openingSize = 10;
+
+    // Re-create walls and store references in wallMeshes
+    const backWall = createWall(museumWidth, 10, 0.5, 0, 5, -museumDepth / 2, wallMaterial);
+    if (backWall) wallMeshes.push(backWall);
+
+    const leftFrontWall = createWall(museumWidth / 2 - openingSize / 2, 10, 0.5, -museumWidth / 4 - openingSize / 4, 5, museumDepth / 2, wallMaterial);
+    if (leftFrontWall) wallMeshes.push(leftFrontWall);
+
+    const rightFrontWall = createWall(museumWidth / 2 - openingSize / 2, 10, 0.5, museumWidth / 4 + openingSize / 4, 5, museumDepth / 2, wallMaterial);
+    if (rightFrontWall) wallMeshes.push(rightFrontWall);
+
+    const leftWall = createWall(0.5, 10, museumDepth, -museumWidth / 2, 5, 0, wallMaterial);
+    if (leftWall) wallMeshes.push(leftWall);
+
+    const rightWall = createWall(0.5, 10, museumDepth, museumWidth / 2, 5, 0, wallMaterial);
+    if (rightWall) wallMeshes.push(rightWall);
+
+    console.log(`Museum resized to width=${museumWidth} based on ${visibleProjectCount} visible projects.`);
+    console.log("Scene children after wall resize:", scene.children);
+}
+
+
+
+
+
+
+
+
+async function fetchSkills() {
+    try {
+        const response = await fetch('/api/skillsAPI');
+        const data = await response.json();
+
+        // If the data has a `$values` property, use it; otherwise, use data as is
+        return data.$values || data;
+    } catch (error) {
+        console.error("Error fetching skills:", error);
+        return [];
+    }
+}
+
+async function fetchCategories() {
+    try {
+        const response = await fetch('/api/categoriesAPI');
+        const data = await response.json();
+
+        // If the data has a `$values` property, use it; otherwise, use data as is
+        return data.$values || data;
+    } catch (error) {
+        console.error("Error fetching categories:", error);
+        return [];
+    }
+}
+
+
+
+
 
 // Start the scene once the window has loaded
 window.onload = function () {

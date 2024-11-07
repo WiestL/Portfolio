@@ -149,6 +149,48 @@ namespace ProjectPortfolio.Controllers
             return NoContent();
         }
 
+        // GET: api/Projects/filter
+        [HttpGet("filter")]
+        public async Task<IActionResult> GetProjectsByFilter([FromQuery] int? skillId, [FromQuery] int? categoryId)
+        {
+            try
+            {
+                // Start with the base query
+                var query = _context.Projects
+                    .Include(p => p.ProjectSkills)
+                    .Include(p => p.ProjectCategories)
+                    .Include(p => p.Testimonials)
+                    .AsQueryable();
+
+                // Filter by skill if skillId is provided
+                if (skillId.HasValue)
+                {
+                    query = query.Where(p => p.ProjectSkills.Any(ps => ps.SkillId == skillId.Value));
+                }
+
+                // Filter by category if categoryId is provided
+                if (categoryId.HasValue)
+                {
+                    query = query.Where(p => p.ProjectCategories.Any(pc => pc.CategoryId == categoryId.Value));
+                }
+
+                var projects = await query.Select(p => new
+                {
+                    p.ProjectId,
+                    p.Title,
+                    p.Description,
+                    p.ProjectUrl
+                }).ToListAsync();
+
+                return Ok(projects);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching filtered projects.");
+                return StatusCode(500, "Internal server error while fetching filtered projects.");
+            }
+        }
+
         // DELETE: api/Projects/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProject(int id)
