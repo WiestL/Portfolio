@@ -100,7 +100,7 @@ app.UseAuthorization();
 // Configure endpoint routing
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Portfolio}/{id?}");
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapRazorPages();
 
