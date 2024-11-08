@@ -1,5 +1,9 @@
 ﻿// Variables for the scene, camera, renderer, and character
 let scene, camera, renderer, character;
+let characterModel; // Reference to the loaded character model
+let controlSignModel; // Reference to the loaded control sign model
+let controlSign; // Instance of the control sign added to the scene
+let grassModel1, grassModel2; // References to the loaded grass models
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 const moveSpeed = 5;  // Character movement speed
 let raycaster;
@@ -15,51 +19,61 @@ let wallMeshes = []; // Track each wall object for proper removal
 let floor; // Reference to the floor mesh
 let pedestalModel; // Reference to the loaded pedestal model
 let testimonialMeshes = []; // Array to store testimonial meshes
+let addTestimonialBox; // Reference to the testimonial box
+
 // Variables for materials
 const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
 const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x89CFF0 });
 const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x30ab2a });
-
 
 // New variables for proximity detection
 let proximitySpheres = []; // Array to store proximity spheres for each pedestal
 let projectInfoVisible = []; // Track visibility state for each pedestal's info
 let pedestalInfoMeshes = []; // Store the text meshes for each pedestal's info
 
+let fontLoader, gltfLoader, loadingManager;
+
+const progressBar = document.getElementById('progressBar');
+const loadingOverlay = document.getElementById('loadingOverlay');
+
+let initCalled = false; // Flag to prevent multiple calls to init()
+
 // Initialize the scene
 async function init() {
+    if (initCalled) {
+        console.warn("init() has already been called.");
+        return;
+    }
+    initCalled = true;
+
+    console.log("init() called"); // Debugging statement
+
     // Set up the scene and camera
     setupScene();
 
-    // Load the font and cache it
-    const fontLoader = new THREE.FontLoader();
-    fontLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', async (font) => {
-        cachedFont = font;
-        console.log('Font loaded:', cachedFont);
+    // Now that assets are loaded, proceed with functions that depend on them
+    createCharacter();           // Uses preloaded `characterModel`
+    createAddTestimonialBox();
+    createProjectDropdown();
 
-        // Now proceed with functions that depend on the font
-        createCharacter();
-        createAddTestimonialBox();
-        createProjectDropdown();
+    createControlInstructions(); // Uses preloaded `controlSignModel`
 
-        createControlInstructions();
+    // Fetch projects and proceed after fetching
+    const projects = await fetchProjectsAndCreatePedestals();
+    const numProjects = projects.length;
 
-        // Fetch projects and proceed after fetching
-        const projects = await fetchProjectsAndCreatePedestals();
-        const numProjects = projects.length;
+    createMuseum(numProjects); // Pass the correct number of projects
 
-        createMuseum(numProjects); // Pass the correct number of projects
+    // Extract project IDs
+    const visibleProjectIds = projects.map(project => project.projectId);
+    loadTestimonials(visibleProjectIds); // Proceed with testimonials after loading projects
 
-        // Extract project IDs
-        const visibleProjectIds = projects.map(project => project.projectId);
-        loadTestimonials(visibleProjectIds); // Proceed with testimonials after loading projects
-
-        animate(); // Start the animation loop
-    });
     const skills = await fetchSkills();       // Fetch skills from API
     const categories = await fetchCategories(); // Fetch categories from API
     createSkillAndCategorySigns(skills, categories);
-    makeGround();
+
+    makeGround(); // Uses preloaded `grassModel1` and `grassModel2`
+
     // Set up event listeners
     window.addEventListener('resize', onWindowResize, false);
     document.addEventListener('keydown', onKeyDown, false);
@@ -67,6 +81,8 @@ async function init() {
 
     // Throttle proximity check
     setInterval(checkProximityToPedestals, 100); // Check every 100ms
+
+    animate(); // Start the animation loop
 }
 
 function setupScene() {
@@ -85,9 +101,6 @@ function setupScene() {
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
 
-    // Disable shadows to improve performance
-    // renderer.shadowMap.enabled = false; // Shadows are disabled by default
-
     document.body.appendChild(renderer.domElement);
 
     // Ambient light for general illumination
@@ -97,10 +110,8 @@ function setupScene() {
     // Directional light without shadows
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6); // Color and intensity
     directionalLight.position.set(10, 20, 10); // Position the light to cast from a specific direction
-    scene.add(directionalLight);;
-    // Removed shadow configurations
+    scene.add(directionalLight);
 }
-
 
 function makeGround() {
     // Create the ground plane
@@ -109,58 +120,24 @@ function makeGround() {
     ground.position.y = -0.1;
     scene.add(ground);
 
-    // Load the grass model
-    const loader = new THREE.GLTFLoader();
-    loader.load('/3DModels/grass.glb', (gltf) => {
-        const grassModel = gltf.scene;
-        grassModel.scale.set(3, 3, 3); // Adjust scale as necessary
-
-        // Scatter multiple instances of the grass model
-        const grassCount = 200; // Adjust the number of grass instances
-        for (let i = 0; i < grassCount; i++) {
-            const grassClone = grassModel.clone(); // Clone the grass model
-
-            // Randomly position each grass instance within the ground boundaries
-            grassClone.position.x = Math.random() * 300 - 150; // X position within ground bounds
-            grassClone.position.z = Math.random() * 300 - 150; // Z position within ground bounds
-            grassClone.position.y = 0.2; // Position slightly above the ground
-
-            // Optionally add random rotation for variety
-            grassClone.rotation.y = Math.random() * Math.PI * 2;
-
-            // Add the grass clone to the scene
-            scene.add(grassClone);
-        }
-    }, undefined, (error) => {
-        console.error('An error occurred while loading the grass model:', error);
-    });
-    loader.load('/3DModels/grass2.glb', (gltf) => {
-        const grassModel = gltf.scene;
-        grassModel.scale.set(6, 6, 6); // Adjust scale as necessary
-
-        // Scatter multiple instances of the grass model
-        const grassCount = 300; // Adjust the number of grass instances
-        for (let i = 0; i < grassCount; i++) {
-            const grassClone = grassModel.clone(); // Clone the grass model
-
-            // Randomly position each grass instance within the ground boundaries
-            grassClone.position.x = Math.random() * 300 - 150; // X position within ground bounds
-            grassClone.position.z = Math.random() * 300 - 150; // Z position within ground bounds
-            grassClone.position.y = 0.2; // Position slightly above the ground
-
-            // Optionally add random rotation for variety
-            grassClone.rotation.y = Math.random() * Math.PI * 2;
-
-            // Add the grass clone to the scene
-            scene.add(grassClone);
-        }
-    }, undefined, (error) => {
-        console.error('An error occurred while loading the grass model:', error);
-    });
+    // Scatter grass using preloaded models
+    scatterGrass(grassModel1, 50); // Adjust count as needed
+    scatterGrass(grassModel2, 50); // Adjust count as needed
 }
 
+function scatterGrass(model, count) {
+    for (let i = 0; i < count; i++) {
+        const grassClone = model.clone();
+        grassClone.position.x = Math.random() * 300 - 150;
+        grassClone.position.z = Math.random() * 300 - 150;
+        grassClone.position.y = 0.2;
+        grassClone.rotation.y = Math.random() * Math.PI * 2;
+        scene.add(grassClone);
+    }
+}
 
 function checkProximityToPedestals() {
+    if (!character) return;
     const characterPosition = character.position.clone();  // Get character's position
 
     for (let i = 0; i < proximitySpheres.length; i++) {
@@ -179,10 +156,17 @@ function checkProximityToPedestals() {
         }
     }
 }
+
 function createSkillAndCategorySigns(skills, categories) {
     // Ensure font is loaded
     if (!cachedFont) {
         console.error("Font not loaded yet.");
+        return;
+    }
+
+    // Avoid creating signs multiple times
+    if (skillsSigns.length > 0 || categoriesSigns.length > 0) {
+        console.log("Skill and category signs already created.");
         return;
     }
 
@@ -249,7 +233,7 @@ function createSkillAndCategorySigns(skills, categories) {
             categoryStartPosition.z + row * gridSpacing
         );
 
-        const signMesh = createSign(category.name, position, 0xffff00); // Blue color for categories
+        const signMesh = createSign(category.name, position, 0xffff00); // Yellow color for categories
 
         // Add bounding box for interaction
         categoriesSigns.push({
@@ -259,15 +243,18 @@ function createSkillAndCategorySigns(skills, categories) {
     });
 }
 
-
 function createControlInstructions() {
-    if (!cachedFont) {
-        console.error('Font not loaded yet.');
+    if (!cachedFont || !controlSignModel) {
+        console.error('Font or control sign model not loaded yet.');
+        return;
+    }
+
+    if (controlSign) {
+        console.log("Control sign already added to the scene.");
         return;
     }
 
     const instructions = [
-        
         "- HAVE FUN",
         "- Use W, A, S, D, or arrow keys to walk around",
         "- Walk up to a project to see details",
@@ -275,122 +262,77 @@ function createControlInstructions() {
         "Controls:"
     ];
 
-    // Load the 3D model for the wooden sign
-    const loader = new THREE.GLTFLoader();
+    controlSign = controlSignModel.clone();
 
-    loader.load('/3DModels/Wooden Sign-3MStJYAez7.glb', (gltf) => {
-        const signModel = gltf.scene;
+    // Adjust the scale of the sign model as needed
+    controlSign.scale.set(11, 11, 10);
+    controlSign.traverse((child) => {
+        if (child.isMesh) {
+            child.material.emissive = new THREE.Color(0xffffff);
+            child.material.emissiveIntensity = 0.1;
+            child.material.roughness = 0.1;
+            child.material.metalness = 0.1;
+        }
+    });
 
-        // Adjust the scale of the sign model as needed
-        signModel.scale.set(11, 11, 10); // Adjust these values to fit your scene
-        signModel.traverse((child) => {
-            if (child.isMesh) {
-                child.material.emissive = new THREE.Color(0xffffff); // Light grey emissive for subtle brightness
-                child.material.emissiveIntensity = 0.1; // Adjust for desired brightness
-            }
-        });
-        signModel.traverse((child) => {
-            if (child.isMesh) {
-                child.material.roughness = 0.1; // Lower values make the surface smoother and more reflective
-                child.material.metalness = 0.1; // Keep low for non-metallic surfaces like wood
-            }
-        });
-        // Set the position of the sign model
-        signModel.position.set(-35, 0, 18); // Adjust to place the sign where you want
-        signModel.rotation.set(0, Math.PI / 4, 0); // Rotate to face the player
+    // Set the position of the sign model
+    controlSign.position.set(-35, 0, 18);
+    controlSign.rotation.set(0, Math.PI / 4, 0);
 
-        scene.add(signModel);
+    scene.add(controlSign);
 
-        // Update the world matrix to ensure transformations are applied
-        signModel.updateMatrixWorld(true);
+    // Update the world matrix to ensure transformations are applied
+    controlSign.updateMatrixWorld(true);
 
-        // Get the bounding box of the sign model for positioning reference
-        const bbox = new THREE.Box3().setFromObject(signModel);
-        const size = new THREE.Vector3();
-        bbox.getSize(size);
+    // Create and position each line of instruction text on the sign
+    const textMaterial = new THREE.MeshPhongMaterial({
+        color: 0x000000,
+        transparent: false,
+        opacity: 1
+    });
 
-        // Log the size for debugging purposes
-        console.log('Sign model size:', size);
+    const lineHeight = 2;
 
-        // Create the text material without fade-in effect
-        const textMaterial = new THREE.MeshPhongMaterial({
-            color: 0x000000,
-            transparent: false,
-            opacity: 1 // Full opacity, since no fade-in
+    instructions.forEach((line, index) => {
+        const textGeometry = new THREE.TextGeometry(line, {
+            font: cachedFont,
+            size: 0.4,
+            height: 0.02,
+            curveSegments: 12,
         });
 
-        // Calculate text positioning based on the sign's dimensions
-        //const signHeight = size.y;
-        //const signWidth = size.x;
-        //const textStartY = signModel.position.y + signHeight / 2 - 2; // Start slightly below the top
-          const lineHeight = 2; // Vertical spacing between lines
+        const textMesh = new THREE.Mesh(textGeometry, textMaterial.clone());
 
-        // Create and position each line of instruction text on the sign
-        instructions.forEach((line, index) => {
-            const textGeometry = new THREE.TextGeometry(line, {
-                font: cachedFont,
-                size: 0.4, // Adjust size for readability
-                height: 0.02,
-                curveSegments: 12,
-            });
+        textMesh.position.x = -36;
+        textMesh.position.y = index * lineHeight + 15;
+        textMesh.position.z = 25;
 
-            // Create the text mesh
-            const textMesh = new THREE.Mesh(textGeometry, textMaterial.clone());
+        textMesh.rotation.set(0, controlSign.rotation.y, 0);
 
-            // Center the text horizontally on the sign
-            textGeometry.computeBoundingBox();
-            const textWidth = textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x;
-
-            // Position the text relative to the sign model
-            textMesh.position.x = -36;
-            textMesh.position.y = index * lineHeight + 15;
-            textMesh.position.z =  25; // Slightly in front of the sign to avoid z-fighting
-
-            // Apply the same rotation as the sign model
-            textMesh.rotation.set(0, signModel.rotation.y, 0);
-
-            // Add the text mesh directly to the scene
-            scene.add(textMesh);
-        });
-
-        // No fade-in animation is applied
-    }, undefined, (error) => {
-        console.error('An error occurred while loading the sign model:', error);
+        scene.add(textMesh);
     });
 }
 
-
-
-
-// Function to create the character (a small cube)
-// Define `character` globally so it can be accessed in other functions
 function createCharacter() {
-    const loader = new THREE.GLTFLoader();
+    if (character) {
+        console.log("Character model already added to the scene.");
+        return;
+    }
 
-    loader.load('/3DModels/Bee.glb', (gltf) => {
-        character = gltf.scene; // Assign to global `character` variable
+    if (!characterModel) {
+        console.error("Character model not loaded yet.");
+        return;
+    }
 
-        // Rotate the bee model if needed
-        //character.rotation.y += Math.PI; // Adjust based on the model's default orientation
-        // Set the character's initial position
-        character.position.set(-28, 0.5, 15); // Start the character outside the museum
-        character.scale.set(7, 7, 7);
+    character = characterModel.clone(); // Use preloaded character model
 
-        // Add the character model to the scene
-        scene.add(character);
+    // Set the character's initial position
+    character.position.set(-28, 0.5, 15); // Start the character outside the museum
+    character.scale.set(7, 7, 7);
 
-        // Optional: Log geometry information if needed for debugging
-        character.traverse((child) => {
-            if (child.isMesh) {
-                logGeometry(child.geometry, 'Character');
-            }
-        });
-    }, undefined, (error) => {
-        console.error('An error occurred while loading the character model:', error);
-    });
+    // Add the character model to the scene
+    scene.add(character);
 }
-
-
 
 let wallBoxes = [];  // Array to store bounding boxes for the walls
 
@@ -419,7 +361,6 @@ function createMuseum(numProjects) {
 
     console.log(`Museum dimensions: width=${museumWidth}, depth=${museumDepth}, openingSize=${openingSize}`);
 
-    
     floor = new THREE.Mesh(new THREE.PlaneGeometry(museumWidth, museumDepth), floorMaterial);
     floor.rotation.x = -Math.PI / 2;
     scene.add(floor);
@@ -452,13 +393,26 @@ function createWall(width, height, depth, x, y, z, material) {
 
     wallBoxes.push(new THREE.Box3().setFromObject(wall));
 
+    wallMeshes.push({ wall, line });
+
     return { wall, line };
 }
 
+// Helper function to dispose of objects
+function disposeObject(object) {
+    if (object.geometry) object.geometry.dispose();
+    if (Array.isArray(object.material)) {
+        object.material.forEach(material => material.dispose());
+    } else if (object.material) {
+        object.material.dispose();
+    }
+}
 
-// Create 'Add Testimonial' interaction box
-let addTestimonialBox;
 function createAddTestimonialBox() {
+    if (addTestimonialBox) {
+        console.log("Add Testimonial Box already created.");
+        return;
+    }
     const boxGeometry = new THREE.PlaneGeometry(3, 1);
     const boxMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000, opacity: 0.5, transparent: true });
     addTestimonialBox = new THREE.Mesh(boxGeometry, boxMaterial);
@@ -475,7 +429,7 @@ function createAddTestimonialBox() {
         mesh: addTestimonialBox
     });
 
-    // Add label text using cached font
+    // Add label text using cachedFont
     if (cachedFont) {
         const textGeometry = new THREE.TextGeometry('Add Review', {
             font: cachedFont,
@@ -493,7 +447,6 @@ function createAddTestimonialBox() {
     }
 }
 
-// Create project dropdown
 let projectDropdown; // Dropdown for selecting project
 let interactionBoxes = []; // Array to store interaction boxes
 let selectedProjectId = null; // Store the selected project ID
@@ -501,6 +454,10 @@ let dropdownOpen = false; // Track if the dropdown is open
 let projectNameEntries = [];
 let selectedProjectMesh = null;
 function createProjectDropdown() {
+    if (projectDropdown) {
+        console.log("Project Dropdown already created.");
+        return;
+    }
     const dropdownGeometry = new THREE.PlaneGeometry(3, 1);
     const dropdownMaterial = new THREE.MeshLambertMaterial({
         color: 0x0000ff,
@@ -524,7 +481,7 @@ function createProjectDropdown() {
         console.error('Failed to create interaction box for dropdown');
     }
 
-    // Add label text using cached font
+    // Add label text using cachedFont
     if (cachedFont) {
         const textGeometry = new THREE.TextGeometry('Select Project', {
             font: cachedFont,
@@ -629,14 +586,12 @@ function fadeInText(meshes) {
     }, step);
 }
 
-// Handle window resizing
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;  // Maintain aspect ratio
     camera.updateProjectionMatrix();  // Update the camera projection
     renderer.setSize(window.innerWidth, window.innerHeight);  // Resize the renderer
 }
 
-// Handle keydown events for movement
 function onKeyDown(event) {
     if (inTestimonialMode) return;
 
@@ -652,7 +607,6 @@ function onKeyDown(event) {
     }
 }
 
-// Handle keyup events to stop movement
 function onKeyUp(event) {
     if (inTestimonialMode) return;  // Ignore movement keys when in testimonial mode
 
@@ -664,11 +618,11 @@ function onKeyUp(event) {
     }
 }
 
-// Update the character's movement
 let characterBox = new THREE.Box3();
 
 function updateMovement() {
     if (inTestimonialMode) return;  // Disable movement when in testimonial mode
+    if (!character) return;
 
     const deltaTime = clock.getDelta(); // Time elapsed since the last frame
     const adjustedSpeed = moveSpeed * deltaTime; // Adjust speed based on time
@@ -752,9 +706,6 @@ function checkCollision() {
     return false;
 }
 
-
-
-
 async function fetchProjectsAndCreatePedestals() {
     try {
         const response = await fetch('/api/projectsAPI');
@@ -789,28 +740,15 @@ let pedestalBoxes = [];  // For collision detection with the character
 let collisionBoxes = []; // To store collision boxes
 
 function createPedestals(projects) {
-    if (pedestalModel) {
-        // Model is already loaded, proceed to create pedestals
-        createPedestalsFromModel(pedestalModel, projects);
-    } else {
-        // Load the model
-        const loader = new THREE.GLTFLoader();
-
-        loader.load('/3DModels/LowPolyPedestal.glb', (gltf) => {
-            pedestalModel = gltf.scene;
-            pedestalModel.scale.set(0.0025, 0.0025, 0.0025);
-            createPedestalsFromModel(pedestalModel, projects);
-        }, undefined, (error) => {
-            console.error('An error occurred while loading the pedestal model:', error);
-        });
-    }
+    // Use the preloaded pedestal model
+    createPedestalsFromModel(pedestalModel, projects);
 }
+
 function createPedestalsFromModel(model, projects) {
     const museumWidth = Math.max(30, projects.length * 20);
     const startX = -museumWidth / 2 + 10;
     const totalProjects = projects.length;
     const projectSpacing = 15; // Fixed spacing between projects
-
 
     projects.forEach((project, index) => {
         // Clone the pedestal model for each project
@@ -861,6 +799,7 @@ function createPedestalsFromModel(model, projects) {
         addInteractionBoxAndLabel(pedestal, project);
     });
 }
+
 function addInteractionBoxAndLabel(pedestal, project) {
     // Create a smaller interaction box based on the pedestal's scale
     const interactionBoxGeometry = new THREE.PlaneGeometry(1, 1); // Smaller box size
@@ -883,7 +822,7 @@ function addInteractionBoxAndLabel(pedestal, project) {
         textMesh: null // Placeholder for the Link text mesh
     };
 
-    // Add "Link" text using cached font
+    // Add "Link" text using cachedFont
     if (cachedFont) {
         const linkTextGeometry = new THREE.TextGeometry('Link', {
             font: cachedFont,
@@ -930,8 +869,7 @@ function hideProjectDetails(pedestalIndex) {
     if (meshes) {
         meshes.forEach(mesh => {
             scene.remove(mesh);
-            mesh.geometry.dispose();
-            mesh.material.dispose();
+            disposeObject(mesh);
         });
         pedestalInfoMeshes[pedestalIndex] = null;
     }
@@ -999,6 +937,7 @@ function createTextMeshes(font, project, pedestal) {
 // Handle interactions when the 'Enter' key is pressed
 function handleInteraction() {
     // Update the character's bounding box
+    if (!character) return;
     characterBox.setFromObject(character);
 
     // Check if the dropdown is open and handle project selection
@@ -1116,7 +1055,6 @@ function handleInteraction() {
     }
 }
 
-
 // Enter testimonial mode
 let testimonialTextField;
 function enterTestimonialMode() {
@@ -1204,13 +1142,15 @@ function exitTestimonialMode() {
     inTestimonialMode = false;
     testimonialText = '';
     scene.remove(testimonialTextField, testimonialDisplayTextMesh, projectNameTextMesh);
+    disposeObject(testimonialTextField);
+    disposeObject(testimonialDisplayTextMesh);
+    disposeObject(projectNameTextMesh);
 
     // Ensure we remove the event listener to prevent further text input
     document.removeEventListener('keydown', handleTextInput, false);
     console.log("Exited testimonial mode and removed keydown listener");
 }
 
-// Handle text input for the testimonial
 let testimonialText = '';
 function handleTextInput(event) {
     // Check if inTestimonialMode is true to process input
@@ -1237,7 +1177,7 @@ function handleTextInput(event) {
         testimonialText += event.key;
     }
 
-    // Update the testimonial text display using cached font
+    // Update the testimonial text display using cachedFont
     if (testimonialDisplayTextMesh && cachedFont) {
         const updatedGeometry = new THREE.TextGeometry(testimonialText, {
             font: cachedFont,
@@ -1322,9 +1262,6 @@ function loadTestimonials(visibleProjectIds = []) {
         });
 }
 
-
-
-// Stop spacebar from affecting scrolling
 window.addEventListener('keydown', function (e) {
     if (e.key === ' ' && e.target === document.body) {
         e.preventDefault();
@@ -1344,13 +1281,11 @@ function logGeometry(geometry, name) {
     }
 }
 
-// Animation loop to render the scene and update the movement
 function animate() {
     requestAnimationFrame(animate);
     updateMovement();  // Update character movement
     renderer.render(scene, camera);
 }
-
 
 async function filterProjects(skillId = null, categoryId = null) {
     try {
@@ -1395,12 +1330,12 @@ function displayFilteredProjects(filteredProjects) {
     const visibleProjectIds = filteredProjects.map(p => p.projectId);
     loadTestimonials(visibleProjectIds);
 }
+
 function removeAllPedestals() {
     // Remove pedestals
     pedestals.forEach(pedestal => {
         scene.remove(pedestal);
-        if (pedestal.geometry) pedestal.geometry.dispose();
-        if (pedestal.material) pedestal.material.dispose();
+        disposeObject(pedestal);
     });
     pedestals = [];
 
@@ -1409,14 +1344,12 @@ function removeAllPedestals() {
         if (entry.type === 'link') {
             // Remove the interaction box mesh
             scene.remove(entry.mesh);
-            if (entry.mesh.geometry) entry.mesh.geometry.dispose();
-            if (entry.mesh.material) entry.mesh.material.dispose();
+            disposeObject(entry.mesh);
 
             // Remove the associated Link text mesh
             if (entry.textMesh) {
                 scene.remove(entry.textMesh);
-                if (entry.textMesh.geometry) entry.textMesh.geometry.dispose();
-                if (entry.textMesh.material) entry.textMesh.material.dispose();
+                disposeObject(entry.textMesh);
             }
 
             return false; // Remove from interactionBoxes array
@@ -1429,8 +1362,7 @@ function removeAllPedestals() {
         if (meshes) {
             meshes.forEach(mesh => {
                 scene.remove(mesh);
-                if (mesh.geometry) mesh.geometry.dispose();
-                if (mesh.material) mesh.material.dispose();
+                disposeObject(mesh);
             });
         }
     });
@@ -1443,6 +1375,7 @@ function removeAllPedestals() {
     // Remove collision boxes
     collisionBoxes.forEach(box => {
         scene.remove(box);
+        disposeObject(box);
     });
     collisionBoxes = [];
 
@@ -1452,8 +1385,7 @@ function removeAllPedestals() {
     // Remove testimonial meshes
     testimonialMeshes.forEach(mesh => {
         scene.remove(mesh);
-        if (mesh.geometry) mesh.geometry.dispose();
-        if (mesh.material) mesh.material.dispose();
+        disposeObject(mesh);
     });
     testimonialMeshes = [];
 }
@@ -1463,19 +1395,13 @@ function clearWalls() {
     wallMeshes.forEach(({ wall, line }, index) => {
         if (wall) {
             scene.remove(wall);
-            wall.geometry.dispose();
-            if (Array.isArray(wall.material)) {
-                wall.material.forEach(material => material.dispose());
-            } else {
-                wall.material.dispose();
-            }
+            disposeObject(wall);
             console.log(`Wall ${index} removed and disposed`);
         }
 
         if (line) {
             scene.remove(line);
-            line.geometry.dispose();
-            line.material.dispose();
+            disposeObject(line);
             console.log(`Wall edge line ${index} removed and disposed`);
         }
     });
@@ -1491,12 +1417,7 @@ function clearWalls() {
             (child.userData && child.userData.type === 'museumWall')
         ) {
             scene.remove(child);
-            child.geometry.dispose();
-            if (child.material instanceof Array) {
-                child.material.forEach(mat => mat.dispose());
-            } else if (child.material) {
-                child.material.dispose();
-            }
+            disposeObject(child);
             console.log("Removed lingering wall from scene.children");
             return false; // Don't keep this child in scene.children
         }
@@ -1506,14 +1427,12 @@ function clearWalls() {
     console.log("All wall meshes, lines, and lingering wall children removed.");
 }
 
-
 function resizeMuseum(visibleProjectCount) {
     clearWalls();
     // Remove old floor
     if (floor) {
         scene.remove(floor);
-        floor.geometry.dispose();
-        floor.material.dispose();
+        disposeObject(floor);
     }
     const projectSpacing = 15;
     const museumWidth = Math.max(30, visibleProjectCount * projectSpacing);
@@ -1531,7 +1450,7 @@ function resizeMuseum(visibleProjectCount) {
     const leftFrontWall = createWall(museumWidth / 2 - openingSize / 2, 5, 0.5, -museumWidth / 4 - openingSize / 4, 3, museumDepth / 2, wallMaterial);
     if (leftFrontWall) wallMeshes.push(leftFrontWall);
 
-    const rightFrontWall = createWall(museumWidth / 2 - openingSize / 2, 7.5, 0.5, museumWidth / 4 + openingSize / 4, 3, museumDepth / 2, wallMaterial);
+    const rightFrontWall = createWall(museumWidth / 2 - openingSize / 2, 5, 0.5, museumWidth / 4 + openingSize / 4, 3, museumDepth / 2, wallMaterial);
     if (rightFrontWall) wallMeshes.push(rightFrontWall);
 
     const leftWall = createWall(0.5, 5, museumDepth, -museumWidth / 2, 3, 0, wallMaterial);
@@ -1541,28 +1460,6 @@ function resizeMuseum(visibleProjectCount) {
     if (rightWall) wallMeshes.push(rightWall);
 
     console.log(`Museum resized to width=${museumWidth} based on ${visibleProjectCount} visible projects.`);
-}
-function checkCollision() {
-    // Update collision boxes for pedestals
-    for (let i = 0; i < pedestalBoxes.length; i++) {
-        pedestalBoxes[i].setFromObject(collisionBoxes[i]); // Update the pedestal's collision box
-    }
-
-    // Check for collisions with walls
-    for (let i = 0; i < wallBoxes.length; i++) {
-        if (characterBox.intersectsBox(wallBoxes[i])) {
-            return true;
-        }
-    }
-
-    // Check for collisions with pedestals
-    for (let i = 0; i < pedestalBoxes.length; i++) {
-        if (characterBox.intersectsBox(pedestalBoxes[i])) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 async function fetchSkills() {
@@ -1593,5 +1490,55 @@ async function fetchCategories() {
 
 // Start the scene once the window has loaded
 window.onload = function () {
-    init();
+    // Initialize the loading manager
+    loadingManager = new THREE.LoadingManager();
+
+    loadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
+        const progress = (itemsLoaded / itemsTotal) * 100;
+        progressBar.style.width = `${progress}%`;
+    };
+
+    loadingManager.onLoad = function () {
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'none'; // Hide overlay when loading is complete
+        }
+        init(); // Initialize the Three.js scene only once
+    };
+
+    // Create loaders using loadingManager
+    fontLoader = new THREE.FontLoader(loadingManager);
+    gltfLoader = new THREE.GLTFLoader(loadingManager);
+
+    // Load assets that need to be tracked by the loading manager
+    fontLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', (font) => {
+        cachedFont = font;
+        console.log("Font loaded:", cachedFont);
+    });
+
+    gltfLoader.load('/3DModels/LowPolyPedestal.glb', (gltf) => {
+        pedestalModel = gltf.scene;
+        pedestalModel.scale.set(0.0025, 0.0025, 0.0025); // Apply scaling here
+        console.log("Pedestal model loaded:", pedestalModel);
+    });
+
+    gltfLoader.load('/3DModels/Bee.glb', (gltf) => {
+        characterModel = gltf.scene;
+        console.log("Character model loaded:", characterModel);
+    });
+
+    gltfLoader.load('/3DModels/Wooden Sign-3MStJYAez7.glb', (gltf) => {
+        controlSignModel = gltf.scene;
+        console.log("Control sign model loaded:", controlSignModel);
+    });
+
+    // Load grass models
+    gltfLoader.load('/3DModels/grass.glb', (gltf) => {
+        grassModel1 = gltf.scene;
+        console.log("Grass model 1 loaded:", grassModel1);
+    });
+
+    gltfLoader.load('/3DModels/grass2.glb', (gltf) => {
+        grassModel2 = gltf.scene;
+        console.log("Grass model 2 loaded:", grassModel2);
+    });
 };

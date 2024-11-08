@@ -15,7 +15,7 @@
 
 <script src="~/js/Loaders/GLTFLoader.js" defer></script>
 
-<!-- Link to your custom Three.js script -->
+<!-- Link to custom Three.js script -->
 <script src="~/js/portfolio.js" defer></script>
 
 <div id="projectModal" class="modal" style="display:none;">
@@ -23,6 +23,44 @@
         <span class="close">&times;</span>
         <h2 id="projectTitle"></h2>
         <p id="projectDescription"></p>
+    </div>
+</div>
+
+<!-- Loading Overlay HTML -->
+<style>
+    #loadingOverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        font-family: Arial, sans-serif;
+    }
+
+    #progressBarContainer {
+        width: 60%;
+        background: #444;
+        border-radius: 5px;
+        padding: 3px;
+    }
+
+    #progressBar {
+        width: 0;
+        height: 20px;
+        background: #4caf50;
+        border-radius: 5px;
+        transition: width 0.2s ease;
+    }
+</style>
+
+<div id="loadingOverlay">
+    <div id="progressBarContainer">
+        <div id="progressBar"></div>
     </div>
 </div>
 
