@@ -18,6 +18,7 @@ let testimonialMeshes = []; // Array to store testimonial meshes
 // Variables for materials
 const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
 const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x89CFF0 });
+const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x30ab2a });
 
 
 // New variables for proximity detection
@@ -55,12 +56,10 @@ async function init() {
 
         animate(); // Start the animation loop
     });
-
-
     const skills = await fetchSkills();       // Fetch skills from API
     const categories = await fetchCategories(); // Fetch categories from API
     createSkillAndCategorySigns(skills, categories);
-
+    makeGround();
     // Set up event listeners
     window.addEventListener('resize', onWindowResize, false);
     document.addEventListener('keydown', onKeyDown, false);
@@ -72,7 +71,6 @@ async function init() {
 
 function setupScene() {
     scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0xcccccc, 50, 200);
 
     const aspectRatio = window.innerWidth / window.innerHeight;
     const cameraSize = 10;
@@ -85,7 +83,6 @@ function setupScene() {
     camera.lookAt(0, 0, 0);
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setClearColor(scene.fog.color);
     renderer.setSize(window.innerWidth, window.innerHeight);
 
     // Disable shadows to improve performance
@@ -98,11 +95,70 @@ function setupScene() {
     scene.add(ambientLight);
 
     // Directional light without shadows
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    directionalLight.position.set(10, 10, 10);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6); // Color and intensity
+    directionalLight.position.set(10, 20, 10); // Position the light to cast from a specific direction
+    scene.add(directionalLight);;
     // Removed shadow configurations
-    scene.add(directionalLight);
 }
+
+
+function makeGround() {
+    // Create the ground plane
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.1;
+    scene.add(ground);
+
+    // Load the grass model
+    const loader = new THREE.GLTFLoader();
+    loader.load('/3DModels/grass.glb', (gltf) => {
+        const grassModel = gltf.scene;
+        grassModel.scale.set(3, 3, 3); // Adjust scale as necessary
+
+        // Scatter multiple instances of the grass model
+        const grassCount = 200; // Adjust the number of grass instances
+        for (let i = 0; i < grassCount; i++) {
+            const grassClone = grassModel.clone(); // Clone the grass model
+
+            // Randomly position each grass instance within the ground boundaries
+            grassClone.position.x = Math.random() * 300 - 150; // X position within ground bounds
+            grassClone.position.z = Math.random() * 300 - 150; // Z position within ground bounds
+            grassClone.position.y = 0.2; // Position slightly above the ground
+
+            // Optionally add random rotation for variety
+            grassClone.rotation.y = Math.random() * Math.PI * 2;
+
+            // Add the grass clone to the scene
+            scene.add(grassClone);
+        }
+    }, undefined, (error) => {
+        console.error('An error occurred while loading the grass model:', error);
+    });
+    loader.load('/3DModels/grass2.glb', (gltf) => {
+        const grassModel = gltf.scene;
+        grassModel.scale.set(6, 6, 6); // Adjust scale as necessary
+
+        // Scatter multiple instances of the grass model
+        const grassCount = 300; // Adjust the number of grass instances
+        for (let i = 0; i < grassCount; i++) {
+            const grassClone = grassModel.clone(); // Clone the grass model
+
+            // Randomly position each grass instance within the ground boundaries
+            grassClone.position.x = Math.random() * 300 - 150; // X position within ground bounds
+            grassClone.position.z = Math.random() * 300 - 150; // Z position within ground bounds
+            grassClone.position.y = 0.2; // Position slightly above the ground
+
+            // Optionally add random rotation for variety
+            grassClone.rotation.y = Math.random() * Math.PI * 2;
+
+            // Add the grass clone to the scene
+            scene.add(grassClone);
+        }
+    }, undefined, (error) => {
+        console.error('An error occurred while loading the grass model:', error);
+    });
+}
+
 
 function checkProximityToPedestals() {
     const characterPosition = character.position.clone();  // Get character's position
@@ -211,90 +267,130 @@ function createControlInstructions() {
     }
 
     const instructions = [
+        
         "- HAVE FUN",
-        "- Use W, A, S, D, or arrowkeys, to walk around",
+        "- Use W, A, S, D, or arrow keys to walk around",
         "- Walk up to a project to see details",
-        "- Press Enter to interact with Link Boxes and Review Writing",
+        "- Press Enter to interact with Signs/Boxes",
         "Controls:"
     ];
 
-    // Create a large block to serve as the 3D billboard
-    const billboardGeometry = new THREE.BoxGeometry(14, 6, 0.5); // Width, height, depth of the block
-    const billboardMaterial = new THREE.MeshLambertMaterial({ color: 0x00d0ff });
-    const billboard = new THREE.Mesh(billboardGeometry, billboardMaterial);
+    // Load the 3D model for the wooden sign
+    const loader = new THREE.GLTFLoader();
 
-    // Set the position of the billboard block
-    billboard.position.set(-31, 6, 15); // Keep the same position but elevated for the pole
-    billboard.rotation.set(0, 45, 0); // Rotate to face the player
-    scene.add(billboard);
+    loader.load('/3DModels/Wooden Sign-3MStJYAez7.glb', (gltf) => {
+        const signModel = gltf.scene;
 
-    // Create the pole to support the billboard
-    const poleGeometry = new THREE.CylinderGeometry(0.5, 0.3, 5, 32); // Narrow and tall cylinder for the pole
-    const poleMaterial = new THREE.MeshLambertMaterial({ color: 0x8f00ff }); // Slightly darker for contrast
-    const pole = new THREE.Mesh(poleGeometry, poleMaterial);
-
-    // Position the pole below the billboard
-    pole.position.set(-31, 0.5, 15); // Ground level position for the pole
-    scene.add(pole);
-
-    // Prevent the player from walking through the billboard by adding a bounding box
-    const billboardBox = new THREE.Box3().setFromObject(billboard);
-    wallBoxes.push(billboardBox); // Add the box to the collision detection array
-
-    // Prevent the player from walking through the pole by adding a bounding box
-    const poleBox = new THREE.Box3().setFromObject(pole);
-    wallBoxes.push(poleBox); // Add the pole to the collision detection array
-
-    // Create and position each line of instruction text on the billboard
-    const textMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, transparent: true, opacity: 0 });
-    let offsetY = 2.5; // Start offset relative to the top of the billboard
-
-    instructions.forEach((line, index) => {
-        const textGeometry = new THREE.TextGeometry(line, {
-            font: cachedFont,
-            size: 0.3, // Keep the same size for readability
-            height: 0.01,
-            curveSegments: 12,
-        });
-
-        const textMesh = new THREE.Mesh(textGeometry, textMaterial.clone()); // Clone material to control opacity independently
-        textMesh.position.set(-33 + 0.3, 8 - offsetY, 20); // Align text on the billboard
-        textMesh.rotation.set(0, 45, 0); // Align with the billboard
-        scene.add(textMesh);
-
-        offsetY -= 1; // Keep the same spacing between lines
-    });
-
-    // Animate the fading in of the instructions
-    let fadeInDuration = 200; // Duration in milliseconds
-    let startTime = performance.now();
-
-    function fadeIn() {
-        let elapsed = performance.now() - startTime;
-        let progress = Math.min(elapsed / fadeInDuration, 1); // Cap progress at 1
-        scene.children.forEach((child) => {
-            if (child.geometry && child.geometry.type === 'TextGeometry') {
-                child.material.opacity = progress; // Gradually increase opacity
+        // Adjust the scale of the sign model as needed
+        signModel.scale.set(11, 11, 10); // Adjust these values to fit your scene
+        signModel.traverse((child) => {
+            if (child.isMesh) {
+                child.material.emissive = new THREE.Color(0xffffff); // Light grey emissive for subtle brightness
+                child.material.emissiveIntensity = 0.1; // Adjust for desired brightness
             }
         });
+        signModel.traverse((child) => {
+            if (child.isMesh) {
+                child.material.roughness = 0.1; // Lower values make the surface smoother and more reflective
+                child.material.metalness = 0.1; // Keep low for non-metallic surfaces like wood
+            }
+        });
+        // Set the position of the sign model
+        signModel.position.set(-35, 0, 18); // Adjust to place the sign where you want
+        signModel.rotation.set(0, Math.PI / 4, 0); // Rotate to face the player
 
-        if (progress < 1) {
-            requestAnimationFrame(fadeIn); // Continue until fully visible
-        }
-    }
+        scene.add(signModel);
 
-    fadeIn();
+        // Update the world matrix to ensure transformations are applied
+        signModel.updateMatrixWorld(true);
+
+        // Get the bounding box of the sign model for positioning reference
+        const bbox = new THREE.Box3().setFromObject(signModel);
+        const size = new THREE.Vector3();
+        bbox.getSize(size);
+
+        // Log the size for debugging purposes
+        console.log('Sign model size:', size);
+
+        // Create the text material without fade-in effect
+        const textMaterial = new THREE.MeshPhongMaterial({
+            color: 0x000000,
+            transparent: false,
+            opacity: 1 // Full opacity, since no fade-in
+        });
+
+        // Calculate text positioning based on the sign's dimensions
+        //const signHeight = size.y;
+        //const signWidth = size.x;
+        //const textStartY = signModel.position.y + signHeight / 2 - 2; // Start slightly below the top
+          const lineHeight = 2; // Vertical spacing between lines
+
+        // Create and position each line of instruction text on the sign
+        instructions.forEach((line, index) => {
+            const textGeometry = new THREE.TextGeometry(line, {
+                font: cachedFont,
+                size: 0.4, // Adjust size for readability
+                height: 0.02,
+                curveSegments: 12,
+            });
+
+            // Create the text mesh
+            const textMesh = new THREE.Mesh(textGeometry, textMaterial.clone());
+
+            // Center the text horizontally on the sign
+            textGeometry.computeBoundingBox();
+            const textWidth = textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x;
+
+            // Position the text relative to the sign model
+            textMesh.position.x = -36;
+            textMesh.position.y = index * lineHeight + 15;
+            textMesh.position.z =  25; // Slightly in front of the sign to avoid z-fighting
+
+            // Apply the same rotation as the sign model
+            textMesh.rotation.set(0, signModel.rotation.y, 0);
+
+            // Add the text mesh directly to the scene
+            scene.add(textMesh);
+        });
+
+        // No fade-in animation is applied
+    }, undefined, (error) => {
+        console.error('An error occurred while loading the sign model:', error);
+    });
 }
+
+
+
 
 // Function to create the character (a small cube)
+// Define `character` globally so it can be accessed in other functions
 function createCharacter() {
-    const charGeometry = new THREE.BoxGeometry(1, 1, 1);  // Cube geometry for the character
-    const charMaterial = new THREE.MeshLambertMaterial({ color: 0xff00c5 });  // Smooth shaded character
-    character = new THREE.Mesh(charGeometry, charMaterial);
-    logGeometry(charGeometry, 'Character');
-    character.position.set(-28, 0.5, 15);  // Start the character outside the museum
-    scene.add(character);
+    const loader = new THREE.GLTFLoader();
+
+    loader.load('/3DModels/Bee.glb', (gltf) => {
+        character = gltf.scene; // Assign to global `character` variable
+
+        // Rotate the bee model if needed
+        //character.rotation.y += Math.PI; // Adjust based on the model's default orientation
+        // Set the character's initial position
+        character.position.set(-28, 0.5, 15); // Start the character outside the museum
+        character.scale.set(7, 7, 7);
+
+        // Add the character model to the scene
+        scene.add(character);
+
+        // Optional: Log geometry information if needed for debugging
+        character.traverse((child) => {
+            if (child.isMesh) {
+                logGeometry(child.geometry, 'Character');
+            }
+        });
+    }, undefined, (error) => {
+        console.error('An error occurred while loading the character model:', error);
+    });
 }
+
+
 
 let wallBoxes = [];  // Array to store bounding boxes for the walls
 
@@ -573,78 +669,91 @@ let characterBox = new THREE.Box3();
 
 function updateMovement() {
     if (inTestimonialMode) return;  // Disable movement when in testimonial mode
+
     const deltaTime = clock.getDelta(); // Time elapsed since the last frame
     const adjustedSpeed = moveSpeed * deltaTime; // Adjust speed based on time
-    const oldPosition = character.position.clone();
 
-    // Adjust isometric movement
+    // Adjust isometric movement vectors
     const forwardVector = new THREE.Vector3(-1, 0, -1).normalize();
     const backwardVector = new THREE.Vector3(1, 0, 1).normalize();
     const leftVector = new THREE.Vector3(-1, 0, 1).normalize();
     const rightVector = new THREE.Vector3(1, 0, -1).normalize();
 
-    // Move the character based on input
-    if (moveForward) character.position.add(forwardVector.clone().multiplyScalar(adjustedSpeed));
-    if (moveBackward) character.position.add(backwardVector.clone().multiplyScalar(adjustedSpeed));
-    if (moveLeft) character.position.add(leftVector.clone().multiplyScalar(adjustedSpeed));
-    if (moveRight) character.position.add(rightVector.clone().multiplyScalar(adjustedSpeed));
+    // Initialize movement vector
+    let movementVector = new THREE.Vector3();
 
-    // Update the character's bounding box only if position changed
-    if (!oldPosition.equals(character.position)) {
+    // Calculate movement vector based on input
+    if (moveForward) movementVector.add(forwardVector);
+    if (moveBackward) movementVector.add(backwardVector);
+    if (moveLeft) movementVector.add(leftVector);
+    if (moveRight) movementVector.add(rightVector);
+
+    if (movementVector.length() > 0) {
+        movementVector.normalize().multiplyScalar(adjustedSpeed);
+
+        const oldPosition = character.position.clone();
+
+        // Move in X direction
+        character.position.x += movementVector.x;
+        // Update the character's bounding box
         characterBox.setFromObject(character);
-    }
 
-    // *** Update collision boxes for pedestals ***
-    for (let i = 0; i < pedestalBoxes.length; i++) {
-        pedestalBoxes[i].setFromObject(collisionBoxes[i]); // Update the pedestal's collision box
-    }
-
-    // Check for collisions with walls and pedestals
-    let isCollision = false;
-    for (let i = 0; i < wallBoxes.length; i++) {
-        if (characterBox.intersectsBox(wallBoxes[i])) {
-            isCollision = true;
-            break;
+        // Check for collisions in X direction
+        if (checkCollision()) {
+            // If collision in X, revert X movement
+            character.position.x = oldPosition.x;
+            characterBox.setFromObject(character);
         }
-    }
-    if (!isCollision) {
-        for (let i = 0; i < pedestalBoxes.length; i++) {
-            if (characterBox.intersectsBox(pedestalBoxes[i])) {
-                isCollision = true;
-                break;
-            }
+
+        // Move in Z direction
+        character.position.z += movementVector.z;
+        // Update the character's bounding box
+        characterBox.setFromObject(character);
+
+        // Check for collisions in Z direction
+        if (checkCollision()) {
+            // If collision in Z, revert Z movement
+            character.position.z = oldPosition.z;
+            characterBox.setFromObject(character);
         }
+
+        // Rotate the character to face the movement direction
+        const angleOffset = -Math.PI / 2; // Adjusted angle offset
+        const angle = Math.atan2(movementVector.x, movementVector.z) + angleOffset;
+        character.rotation.y = angle;
     }
-
-    // If there is a collision with walls or pedestals, prevent movement
-    if (isCollision) {
-        character.position.copy(oldPosition);  // Revert to old position on collision
-    }
-
-    // Now check for interactions
-    let isOnInteractionBox = false;
-    for (let i = 0; i < interactionBoxes.length; i++) {
-        const interactionBoxEntry = interactionBoxes[i];
-        const interactionBox = interactionBoxEntry.box;
-
-        if (interactionBox && interactionBox.isBox3) {
-            if (characterBox.intersectsBox(interactionBox)) {
-                isOnInteractionBox = true;
-                break; // Stop checking after finding an interaction
-            }
-        } else {
-            console.error('Invalid interaction box:', interactionBox);
-        }
-    }
-
-    // You can handle any logic for when the character is on an interaction box here
-    // For example, change cursor, display tooltip, etc.
 
     // Update the camera to follow the character
     camera.position.x = character.position.x + 10;
     camera.position.z = character.position.z + 10;
     camera.lookAt(character.position);
 }
+
+function checkCollision() {
+    // Update collision boxes for pedestals
+    for (let i = 0; i < pedestalBoxes.length; i++) {
+        pedestalBoxes[i].setFromObject(collisionBoxes[i]); // Update the pedestal's collision box
+    }
+
+    // Check for collisions with walls
+    for (let i = 0; i < wallBoxes.length; i++) {
+        if (characterBox.intersectsBox(wallBoxes[i])) {
+            return true;
+        }
+    }
+
+    // Check for collisions with pedestals
+    for (let i = 0; i < pedestalBoxes.length; i++) {
+        if (characterBox.intersectsBox(pedestalBoxes[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+
 
 async function fetchProjectsAndCreatePedestals() {
     try {
@@ -1432,6 +1541,28 @@ function resizeMuseum(visibleProjectCount) {
     if (rightWall) wallMeshes.push(rightWall);
 
     console.log(`Museum resized to width=${museumWidth} based on ${visibleProjectCount} visible projects.`);
+}
+function checkCollision() {
+    // Update collision boxes for pedestals
+    for (let i = 0; i < pedestalBoxes.length; i++) {
+        pedestalBoxes[i].setFromObject(collisionBoxes[i]); // Update the pedestal's collision box
+    }
+
+    // Check for collisions with walls
+    for (let i = 0; i < wallBoxes.length; i++) {
+        if (characterBox.intersectsBox(wallBoxes[i])) {
+            return true;
+        }
+    }
+
+    // Check for collisions with pedestals
+    for (let i = 0; i < pedestalBoxes.length; i++) {
+        if (characterBox.intersectsBox(pedestalBoxes[i])) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 async function fetchSkills() {
