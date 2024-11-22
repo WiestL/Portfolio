@@ -6,6 +6,8 @@ using ProjectPortfolio.Contexts;
 using ProjectPortfolio.Models;
 using ProjectPortfolio.Services;
 using System.Text.Json.Serialization;
+using Npgsql.EntityFrameworkCore.PostgreSQL;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,12 +27,10 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
 });
 
-// Configure Entity Framework with SQL Server
+// Configure Entity Framework with Render
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"), sqlOptions =>
-    {
-        sqlOptions.EnableRetryOnFailure();
-    }));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
 
 // Configure Identity with custom User class and roles
 builder.Services.AddIdentity<User, IdentityRole>(options =>
