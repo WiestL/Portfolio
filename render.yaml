@@ -1,0 +1,9 @@
+﻿services:
+  - type: web
+    name: PortfolioApp
+    runtime: docker
+    buildCommand: docker build -t portfolioapp .
+    startCommand: docker run -p 3000:80 portfolioapp
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
