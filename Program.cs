@@ -49,7 +49,9 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 var app = builder.Build();
-var port = Environment.GetEnvironmentVariable("PORT") ?? "3000"; // Default to 3000 if PORT is not set
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+
+app.Urls.Add($"http://0.0.0.0:{port}");
 // Seed roles and admin user
 using (var scope = app.Services.CreateScope())
 {
@@ -104,7 +106,7 @@ app.MapControllerRoute(
 
 app.MapRazorPages();
 
-app.Run($"http://0.0.0.0:{port}");
+app.Run();
 
 // Seeding method to create roles and admin user
 async Task SeedRolesAndAdminUser(UserManager<User> userManager, RoleManager<IdentityRole> roleManager)
