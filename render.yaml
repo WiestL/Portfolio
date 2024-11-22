@@ -3,7 +3,7 @@
     name: PortfolioApp
     runtime: docker
     buildCommand: docker build -t portfolioapp .
-    startCommand: docker run -e PORT=$PORT -p 10000:10000 portfolioapp
+    startCommand: dotnet ProjectPortfolio.dll
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
