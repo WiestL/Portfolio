@@ -29,4 +29,5 @@ RUN dotnet publish "./ProjectPortfolio.csproj" -c %BUILD_CONFIGURATION% -o /app/
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+ENV ASPNETCORE_URLS=http://+:${PORT:-8080}
 ENTRYPOINT ["dotnet", "ProjectPortfolio.dll"]
