@@ -10,10 +10,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL;
 
 
 var builder = WebApplication.CreateBuilder(args);
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+Console.WriteLine($"Active Connection String: {connectionString}");
 
 // Add configuration from appsettings.json and environment variables
-builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                      .AddEnvironmentVariables();
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddUserSecrets<Program>()
+    .AddEnvironmentVariables();
+
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
@@ -29,7 +34,9 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 
 // Configure Entity Framework with Render
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
+                      npgsqlOptions => npgsqlOptions.EnableRetryOnFailure()));
+
 
 
 // Configure Identity with custom User class and roles

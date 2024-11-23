@@ -1,42 +1,39 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>e44143cf-1622-40d5-99ad-5adb7ec2ca8c</UserSecretsId>
-    <DockerDefaultTargetOS>Windows</DockerDefaultTargetOS>
-    <DockerfileContext>.</DockerfileContext>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UserSecretsId>e44143cf-1622-40d5-99ad-5adb7ec2ca8c</UserSecretsId>
+		<DockerDefaultTargetOS>Windows</DockerDefaultTargetOS>
+		<DockerfileContext>.</DockerfileContext>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <None Include="wwwroot\3DModels\LowPolyPedestal.glb" />
-    <None Include="wwwroot\Textures\aliengroundgrass.png" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Include="wwwroot\3DModels\LowPolyPedestal.glb" />
+		<None Include="wwwroot\Textures\aliengroundgrass.png" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Azure.Identity" Version="1.11.4" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.10" />
-    <PackageReference Include="Microsoft.Azure.AppConfiguration.AspNetCore" Version="8.0.0-preview.2" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SQLite" Version="8.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.10">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.Identity.Client" Version="4.66.1" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
-    <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.6" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Migrations\" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Azure.Identity" Version="1.11.4" />
+		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
+		<PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.10" />
+		<PackageReference Include="Microsoft.Azure.AppConfiguration.AspNetCore" Version="8.0.0-preview.2" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10">
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SQLite" Version="8.0.10" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.10" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.10">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.Identity.Client" Version="4.66.1" />
+		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
+		<PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.6" />
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
+	</ItemGroup>
 
 </Project>
