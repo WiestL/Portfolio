@@ -1532,13 +1532,13 @@ window.onload = function () {
     });
 
     // Load grass models
-    gltfLoader.load('/3DModels/grass.glb', (gltf) => {
+    gltfLoader.load('/3DModels/Grass.glb', (gltf) => {
         grassModel1 = gltf.scene;
-        console.log("Grass model 1 loaded:", GrassModel1);
+        console.log("Grass model 1 loaded:", grassModel1);
     });
 
-    gltfLoader.load('/3DModels/grass2.glb', (gltf) => {
+    gltfLoader.load('/3DModels/Grass2.glb', (gltf) => {
         grassModel2 = gltf.scene;
-        console.log("Grass model 2 loaded:", GrassModel2);
+        console.log("Grass model 2 loaded:", grassModel2);
     });
 };
