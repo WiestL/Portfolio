@@ -1534,11 +1534,11 @@ window.onload = function () {
     // Load grass models
     gltfLoader.load('/3DModels/grass.glb', (gltf) => {
         grassModel1 = gltf.scene;
-        console.log("Grass model 1 loaded:", grassModel1);
+        console.log("Grass model 1 loaded:", GrassModel1);
     });
 
     gltfLoader.load('/3DModels/grass2.glb', (gltf) => {
         grassModel2 = gltf.scene;
-        console.log("Grass model 2 loaded:", grassModel2);
+        console.log("Grass model 2 loaded:", GrassModel2);
     });
 };
