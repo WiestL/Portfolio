@@ -2,7 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using ProjectPortfolio.Contexts;
 using ProjectPortfolio.Models;
-using Microsoft.Extensions.Logging; // Import the logging namespace
 
 namespace ProjectPortfolio.Controllers
 {
