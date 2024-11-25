@@ -11,17 +11,16 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchProjects(filters = {}) {
     try {
         let url = '/api/ProjectsAPI';
-        const queryParams = [];
-
-        if (filters.skills && filters.skills.length > 0) {
-            filters.skills.forEach(skillId => queryParams.push(`skillId=${skillId}`));
-        }
-        if (filters.categories && filters.categories.length > 0) {
-            filters.categories.forEach(categoryId => queryParams.push(`categoryId=${categoryId}`));
-        }
-
-        if (queryParams.length > 0) {
-            url += `/filter?` + queryParams.join('&');
+        if (filters.skills || filters.categories) {
+            url += '/filter?';
+            const queryParams = [];
+            if (filters.skills && filters.skills.length > 0) {
+                filters.skills.forEach(skill => queryParams.push(`skillId=${skill}`));
+            }
+            if (filters.categories && filters.categories.length > 0) {
+                filters.categories.forEach(category => queryParams.push(`categoryId=${category}`));
+            }
+            url += queryParams.join('&');
         }
 
         const response = await fetch(url);
@@ -105,14 +104,12 @@ function setupTestimonials() {
         // Open modal
         modal.setAttribute('aria-hidden', 'false');
         document.getElementById('author-name').focus();
-        trapFocus(modal);
     });
 
     closeButton.addEventListener('click', () => {
         // Close modal
         modal.setAttribute('aria-hidden', 'true');
         testimonialForm.reset();
-        removeTrapFocus(modal);
     });
 
     testimonialForm.addEventListener('submit', async (e) => {
@@ -138,7 +135,6 @@ function setupTestimonials() {
             alert('Thank you for your review!');
             testimonialForm.reset();
             modal.setAttribute('aria-hidden', 'true');
-            removeTrapFocus(modal);
             fetchTestimonials();
         } catch (error) {
             console.error(error);
@@ -191,71 +187,4 @@ function displayTestimonials(testimonials) {
 
         container.appendChild(testimonialDiv);
     });
-}
-
-// Setup contact form
-function setupContactForm() {
-    const contactForm = document.getElementById('contact-form');
-
-    contactForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name = document.getElementById('contact-name').value.trim();
-        const email = document.getElementById('contact-email').value.trim();
-        const message = document.getElementById('contact-message').value.trim();
-
-        if (!name || !email || !message) {
-            alert('Please fill in all fields.');
-            return;
-        }
-
-        // Here, you can implement form submission logic, e.g., sending an email or storing the message.
-        // For demonstration, we'll just reset the form and show a thank-you message.
-
-        alert('Thank you for reaching out! I will get back to you shortly.');
-        contactForm.reset();
-    });
-}
-
-// Accessibility: Focus Trap in Modal
-let focusableElementsString = 'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, [tabindex="0"], [contenteditable]';
-let firstTabStop;
-let lastTabStop;
-
-function trapFocus(modal) {
-    const focusableElements = modal.querySelectorAll(focusableElementsString);
-    const focusableArray = Array.prototype.slice.call(focusableElements);
-
-    if (focusableArray.length === 0) return;
-
-    firstTabStop = focusableArray[0];
-    lastTabStop = focusableArray[focusableArray.length - 1];
-
-    modal.addEventListener('keydown', handleTrapFocus);
-}
-
-function handleTrapFocus(e) {
-    if (e.key === 'Tab') {
-        if (e.shiftKey) { // Shift + Tab
-            if (document.activeElement === firstTabStop) {
-                e.preventDefault();
-                lastTabStop.focus();
-            }
-        } else { // Tab
-            if (document.activeElement === lastTabStop) {
-                e.preventDefault();
-                firstTabStop.focus();
-            }
-        }
-    }
-
-    if (e.key === 'Escape') {
-        const modal = document.getElementById('testimonial-modal');
-        modal.setAttribute('aria-hidden', 'true');
-        const closeButton = document.getElementById('close-modal');
-        closeButton.click();
-    }
-}
-
-function removeTrapFocus(modal) {
-    modal.removeEventListener('keydown', handleTrapFocus);
 }

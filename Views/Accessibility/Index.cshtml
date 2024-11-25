@@ -1,6 +1,4 @@
-﻿@model ProjectPortfolio.ViewModels.AccessibilityViewModel
-
-@{
+﻿@{
     ViewData["Title"] = "Accessible Portfolio";
 }
 
@@ -11,7 +9,11 @@
 <!-- Skip Navigation Link -->
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
-<!-- Main Content -->
+<header>
+    <!-- Reuse the existing navbar from _Layout.cshtml -->
+    <!-- Since it's already in _Layout.cshtml, no need to duplicate it here -->
+</header>
+
 <main id="main-content">
     <!-- Filters Section -->
     <section aria-labelledby="filters-heading">
@@ -19,23 +21,27 @@
         <form id="filters-form">
             <fieldset>
                 <legend>Skills</legend>
-                @foreach (var skill in Model.Skills)
-                {
-                    <div>
-                        <input type="checkbox" id="skill-@skill.SkillId" name="skills" value="@skill.SkillId">
-                        <label for="skill-@skill.SkillId">@skill.SkillName</label>
-                    </div>
-                }
+                <div>
+                    <input type="checkbox" id="skill-js" name="skills" value="JavaScript">
+                    <label for="skill-js">JavaScript</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="skill-cs" name="skills" value="C#">
+                    <label for="skill-cs">C#</label>
+                </div>
+                <!-- Add more skills as needed -->
             </fieldset>
             <fieldset>
                 <legend>Categories</legend>
-                @foreach (var category in Model.Categories)
-                {
-                    <div>
-                        <input type="checkbox" id="category-@category.CategoryId" name="categories" value="@category.CategoryId">
-                        <label for="category-@category.CategoryId">@category.CategoryName</label>
-                    </div>
-                }
+                <div>
+                    <input type="checkbox" id="category-web" name="categories" value="Web Development">
+                    <label for="category-web">Web Development</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="category-mobile" name="categories" value="Mobile Apps">
+                    <label for="category-mobile">Mobile Apps</label>
+                </div>
+                <!-- Add more categories as needed -->
             </fieldset>
             <button type="button" id="apply-filters">Apply Filters</button>
         </form>
