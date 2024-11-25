@@ -21,27 +21,17 @@
         <form id="filters-form">
             <fieldset>
                 <legend>Skills</legend>
-                <div>
-                    <input type="checkbox" id="skill-js" name="skills" value="JavaScript">
-                    <label for="skill-js">JavaScript</label>
+                <div id="skills-container">
+                    <!-- Skills checkboxes will be dynamically inserted here by accessibility.js -->
+                    <p>Loading skills...</p>
                 </div>
-                <div>
-                    <input type="checkbox" id="skill-cs" name="skills" value="C#">
-                    <label for="skill-cs">C#</label>
-                </div>
-                <!-- Add more skills as needed -->
             </fieldset>
             <fieldset>
                 <legend>Categories</legend>
-                <div>
-                    <input type="checkbox" id="category-web" name="categories" value="Web Development">
-                    <label for="category-web">Web Development</label>
+                <div id="categories-container">
+                    <!-- Categories checkboxes will be dynamically inserted here by accessibility.js -->
+                    <p>Loading categories...</p>
                 </div>
-                <div>
-                    <input type="checkbox" id="category-mobile" name="categories" value="Mobile Apps">
-                    <label for="category-mobile">Mobile Apps</label>
-                </div>
-                <!-- Add more categories as needed -->
             </fieldset>
             <button type="button" id="apply-filters">Apply Filters</button>
         </form>

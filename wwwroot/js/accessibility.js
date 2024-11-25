@@ -1,13 +1,107 @@
 ﻿// accessibility.js
 
 document.addEventListener('DOMContentLoaded', () => {
+    fetchSkills();
+    fetchCategories();
     fetchProjects();
     setupFilterListeners();
     setupTestimonials();
     setupContactForm();
 });
 
-// Fetch and display projects
+// Fetch and display Skills
+async function fetchSkills() {
+    try {
+        const response = await fetch('/api/SkillsAPI');
+        if (!response.ok) throw new Error(`Error fetching skills: ${response.statusText}`);
+
+        const data = await response.json();
+        const skills = data.$values || data; // Adjust based on your API response structure
+
+        displaySkills(skills);
+    } catch (error) {
+        console.error(error);
+        const skillsContainer = document.getElementById('skills-container');
+        skillsContainer.innerHTML = '<p>Failed to load skills.</p>';
+    }
+}
+
+// Display Skills in the DOM
+function displaySkills(skills) {
+    const container = document.getElementById('skills-container');
+    container.innerHTML = ''; // Clear placeholder
+
+    if (skills.length === 0) {
+        container.innerHTML = '<p>No skills available.</p>';
+        return;
+    }
+
+    skills.forEach(skill => {
+        const div = document.createElement('div');
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `skill-${skill.id}`;
+        checkbox.name = 'skills';
+        checkbox.value = skill.id; // Assuming 'id' is used for filtering
+        div.appendChild(checkbox);
+
+        const label = document.createElement('label');
+        label.htmlFor = `skill-${skill.id}`;
+        label.textContent = skill.name;
+        div.appendChild(label);
+
+        container.appendChild(div);
+    });
+}
+
+// Fetch and display Categories
+async function fetchCategories() {
+    try {
+        const response = await fetch('/api/CategoriesAPI');
+        if (!response.ok) throw new Error(`Error fetching categories: ${response.statusText}`);
+
+        const data = await response.json();
+        const categories = data.$values || data; // Adjust based on your API response structure
+
+        displayCategories(categories);
+    } catch (error) {
+        console.error(error);
+        const categoriesContainer = document.getElementById('categories-container');
+        categoriesContainer.innerHTML = '<p>Failed to load categories.</p>';
+    }
+}
+
+// Display Categories in the DOM
+function displayCategories(categories) {
+    const container = document.getElementById('categories-container');
+    container.innerHTML = ''; // Clear placeholder
+
+    if (categories.length === 0) {
+        container.innerHTML = '<p>No categories available.</p>';
+        return;
+    }
+
+    categories.forEach(category => {
+        const div = document.createElement('div');
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `category-${category.id}`;
+        checkbox.name = 'categories';
+        checkbox.value = category.id; // Assuming 'id' is used for filtering
+        div.appendChild(checkbox);
+
+        const label = document.createElement('label');
+        label.htmlFor = `category-${category.id}`;
+        label.textContent = category.name;
+        div.appendChild(label);
+
+        container.appendChild(div);
+    });
+}
+
+// Fetch and display projects based on filters
 async function fetchProjects(filters = {}) {
     try {
         let url = '/api/ProjectsAPI';
@@ -15,10 +109,10 @@ async function fetchProjects(filters = {}) {
             url += '/filter?';
             const queryParams = [];
             if (filters.skills && filters.skills.length > 0) {
-                filters.skills.forEach(skill => queryParams.push(`skillId=${skill}`));
+                filters.skills.forEach(skill => queryParams.push(`skillId=${encodeURIComponent(skill)}`));
             }
             if (filters.categories && filters.categories.length > 0) {
-                filters.categories.forEach(category => queryParams.push(`categoryId=${category}`));
+                filters.categories.forEach(category => queryParams.push(`categoryId=${encodeURIComponent(category)}`));
             }
             url += queryParams.join('&');
         }
@@ -27,7 +121,7 @@ async function fetchProjects(filters = {}) {
         if (!response.ok) throw new Error(`Error fetching projects: ${response.statusText}`);
 
         const data = await response.json();
-        const projects = data.$values || data;
+        const projects = data.$values || data; // Adjust based on your API response structure
 
         displayProjects(projects);
     } catch (error) {
@@ -153,7 +247,7 @@ async function fetchTestimonials() {
         if (!response.ok) throw new Error(`Error fetching testimonials: ${response.statusText}`);
 
         const data = await response.json();
-        const testimonials = data.$values || data;
+        const testimonials = data.$values || data; // Adjust based on your API response structure
 
         displayTestimonials(testimonials);
     } catch (error) {
@@ -189,25 +283,4 @@ function displayTestimonials(testimonials) {
     });
 }
 
-// Setup contact form
-function setupContactForm() {
-    const contactForm = document.getElementById('contact-form');
-
-    contactForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name = document.getElementById('contact-name').value.trim();
-        const email = document.getElementById('contact-email').value.trim();
-        const message = document.getElementById('contact-message').value.trim();
-
-        if (!name || !email || !message) {
-            alert('Please fill in all fields.');
-            return;
-        }
-
-        // Here, you can implement form submission logic, e.g., sending an email or storing the message.
-        // For demonstration, we'll just reset the form and show a thank-you message.
-
-        alert('Thank you for reaching out! I will get back to you shortly.');
-        contactForm.reset();
-    });
 }
