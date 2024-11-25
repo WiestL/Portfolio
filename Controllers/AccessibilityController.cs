@@ -1,12 +1,9 @@
-﻿// Controllers/AccessibilityController.cs
-
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProjectPortfolio.Models;
-using ProjectPortfolio.ViewModels;
-using ProjectPortfolio.Contexts;
 using System.Threading.Tasks;
 using System.Linq;
+using ProjectPortfolio.Contexts;
 
 namespace ProjectPortfolio.Controllers
 {
@@ -26,18 +23,11 @@ namespace ProjectPortfolio.Controllers
             var skills = await _context.Skills.ToListAsync();
             var categories = await _context.Categories.ToListAsync();
 
-            // Optionally, fetch Projects if the ViewModel includes them
-            var projects = await _context.Projects.ToListAsync();
+            // Option 1: Use ViewBag
+            ViewBag.Skills = skills;
+            ViewBag.Categories = categories;
 
-            // Initialize the ViewModel
-            var viewModel = new AccessibilityVM
-            {
-                Skills = skills,
-                Categories = categories,
-                Projects = projects 
-            };
-
-            return View(viewModel);
+            return View();
         }
     }
 }

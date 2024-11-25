@@ -3,7 +3,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     fetchProjects();
     setupFilterListeners();
-    setupProjectTestimonials();
+    setupTestimonials();
     setupContactForm();
 });
 
@@ -82,11 +82,6 @@ function displayProjects(projects) {
         // Add to container
         container.appendChild(card);
     });
-
-    // After rendering projects, fetch testimonials for each project
-    projects.forEach(project => {
-        fetchTestimonials(project.ProjectId);
-    });
 }
 
 // Setup filter listeners
@@ -99,54 +94,85 @@ function setupFilterListeners() {
     });
 }
 
-// Setup project-specific testimonials
-function setupProjectTestimonials() {
-    const addButtons = document.querySelectorAll('.add-testimonial-button');
-    addButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const projectId = button.getAttribute('data-project-id');
-            openTestimonialModal(projectId);
-        });
-    });
-}
-
-// Open the testimonial modal with the selected project ID
-function openTestimonialModal(projectId) {
+// Setup testimonials
+function setupTestimonials() {
+    const addButton = document.getElementById('add-testimonial-button');
     const modal = document.getElementById('testimonial-modal');
-    const projectIdInput = document.getElementById('testimonial-project-id');
+    const closeButton = document.getElementById('close-modal');
+    const testimonialForm = document.getElementById('testimonial-form');
 
-    projectIdInput.value = projectId;
+    addButton.addEventListener('click', () => {
+        // Open modal
+        modal.setAttribute('aria-hidden', 'false');
+        document.getElementById('author-name').focus();
+        trapFocus(modal);
+    });
 
-    modal.setAttribute('aria-hidden', 'false');
-    document.getElementById('author-name').focus();
-    trapFocus(modal);
+    closeButton.addEventListener('click', () => {
+        // Close modal
+        modal.setAttribute('aria-hidden', 'true');
+        testimonialForm.reset();
+        removeTrapFocus(modal);
+    });
+
+    testimonialForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const authorName = document.getElementById('author-name').value.trim();
+        const content = document.getElementById('testimonial-content').value.trim();
+        const projectId = document.getElementById('testimonial-project-id').value;
+
+        if (!authorName || !content || !projectId) {
+            alert('Please fill in all fields.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/testimonialsAPI', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ authorName, content, projectId })
+            });
+
+            if (!response.ok) throw new Error('Failed to submit testimonial.');
+
+            alert('Thank you for your review!');
+            testimonialForm.reset();
+            modal.setAttribute('aria-hidden', 'true');
+            removeTrapFocus(modal);
+            fetchTestimonials();
+        } catch (error) {
+            console.error(error);
+            alert('An error occurred while submitting your testimonial. Please try again.');
+        }
+    });
+
+    // Fetch and display testimonials
+    fetchTestimonials();
 }
 
-// Fetch and display testimonials for a specific project
-async function fetchTestimonials(projectId) {
+// Fetch and display testimonials
+async function fetchTestimonials() {
     try {
-        const response = await fetch(`/api/testimonialsAPI?projectId=${projectId}`);
+        const response = await fetch('/api/testimonialsAPI');
         if (!response.ok) throw new Error(`Error fetching testimonials: ${response.statusText}`);
 
         const data = await response.json();
         const testimonials = data.$values || data;
 
-        displayProjectTestimonials(projectId, testimonials);
+        displayTestimonials(testimonials);
     } catch (error) {
         console.error(error);
         alert('Failed to load testimonials. Please try again later.');
     }
 }
 
-// Display testimonials for a specific project in the DOM
-function displayProjectTestimonials(projectId, testimonials) {
-    const container = document.querySelector(`.testimonials-container[data-project-id="${projectId}"]`);
-    if (!container) return;
-
+// Display testimonials in the DOM
+function displayTestimonials(testimonials) {
+    const container = document.getElementById('testimonials-container');
     container.innerHTML = ''; // Clear existing testimonials
 
     if (testimonials.length === 0) {
-        container.innerHTML = '<p>No testimonials yet.</p>';
+        container.innerHTML = '<p>No testimonials yet. Be the first to add one!</p>';
         return;
     }
 
@@ -167,12 +193,6 @@ function displayProjectTestimonials(projectId, testimonials) {
     });
 }
 
-// Setup testimonials
-function setupTestimonials() {
-    // No longer needed since we're handling project-specific testimonials
-    // All testimonial handling is now project-specific
-}
-
 // Setup contact form
 function setupContactForm() {
     const contactForm = document.getElementById('contact-form');
@@ -188,7 +208,7 @@ function setupContactForm() {
             return;
         }
 
-        // Implement form submission logic here (e.g., send an email or store the message)
+        // Here, you can implement form submission logic, e.g., sending an email or storing the message.
         // For demonstration, we'll just reset the form and show a thank-you message.
 
         alert('Thank you for reaching out! I will get back to you shortly.');

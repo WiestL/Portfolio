@@ -1,5 +1,4 @@
-﻿@model ProjectPortfolio.ViewModels.AccessibilityVM
-
+﻿
 @{
     ViewData["Title"] = "Accessible Portfolio";
 }
@@ -23,7 +22,7 @@
                 {
                     <div>
                         <input type="checkbox" id="skill-@skill.SkillId" name="skills" value="@skill.SkillId">
-                        <label for="skill-@skill.SkillId">@skill.Name</label>
+                        <label for="skill-@skill.SkillId">@skill.SkillName</label>
                     </div>
                 }
             </fieldset>
@@ -33,7 +32,7 @@
                 {
                     <div>
                         <input type="checkbox" id="category-@category.CategoryId" name="categories" value="@category.CategoryId">
-                        <label for="category-@category.CategoryId">@category.Name</label>
+                        <label for="category-@category.CategoryId">@category.CategoryName</label>
                     </div>
                 }
             </fieldset>
@@ -45,68 +44,42 @@
     <section id="projects" aria-labelledby="projects-heading">
         <h2 id="projects-heading">Projects</h2>
         <div id="projects-container" role="list">
-            @foreach (var project in Model.Projects)
-            {
-                <div class="project-card" role="listitem">
-                    <img src="@project.ImageUrl" alt="@project.Title">
-                    <h3>@project.Title</h3>
-                    <p>@project.Description</p>
-                    <a href="@project.ProjectUrl" target="_blank" rel="noopener noreferrer" class="button">View Project</a>
-
-                    <!-- Testimonials for this project -->
-                    <div class="project-testimonials">
-                        <h4>Testimonials</h4>
-                        <div class="testimonials-container" data-project-id="@project.ProjectId">
-                            <!-- Testimonials will be dynamically inserted here by accessibility.js -->
-                        </div>
-                        <button class="add-testimonial-button" data-project-id="@project.ProjectId">Add a Review</button>
-                    </div>
-                </div>
-            }
+            <!-- Project Cards will be dynamically inserted here by accessibility.js -->
         </div>
     </section>
 
-    <!-- Contact Section -->
-    <section id="contact" aria-labelledby="contact-heading">
-        <h2 id="contact-heading">Contact Me</h2>
-        <form id="contact-form">
-            <label for="contact-name">Name:</label>
-            <input type="text" id="contact-name" name="name" required>
+    <!-- Testimonials Section -->
+    <section id="testimonials" aria-labelledby="testimonials-heading">
+        <h2 id="testimonials-heading">Testimonials</h2>
+        <div id="testimonials-container">
+            <!-- Testimonials will be dynamically inserted here by accessibility.js -->
+        </div>
+        <button id="add-testimonial-button">Add a Review</button>
+        <!-- Modal for Adding Testimonials -->
+        <div id="testimonial-modal" aria-hidden="true">
+            <div role="dialog" aria-labelledby="modal-title" aria-describedby="modal-description">
+                <h3 id="modal-title">Add Your Review</h3>
+                <p id="modal-description">Please share your thoughts about the project.</p>
+                <form id="testimonial-form">
+                    <label for="author-name">Name:</label>
+                    <input type="text" id="author-name" name="authorName" required>
 
-            <label for="contact-email">Email:</label>
-            <input type="email" id="contact-email" name="email" required>
+                    <label for="testimonial-content">Review:</label>
+                    <textarea id="testimonial-content" name="content" rows="4" required></textarea>
 
-            <label for="contact-message">Message:</label>
-            <textarea id="contact-message" name="message" rows="4" required></textarea>
+                    <input type="hidden" id="testimonial-project-id" name="projectId">
 
-            <button type="submit">Send Message</button>
-        </form>
+                    <button type="submit">Submit</button>
+                    <button type="button" id="close-modal">Cancel</button>
+                </form>
+            </div>
+        </div>
     </section>
 </main>
 
 <footer>
     <p>&copy; 2024 My Project Portfolio</p>
 </footer>
-
-<!-- Modal for Adding Testimonials -->
-<div id="testimonial-modal" aria-hidden="true">
-    <div role="dialog" aria-labelledby="modal-title" aria-describedby="modal-description">
-        <h3 id="modal-title">Add Your Review</h3>
-        <p id="modal-description">Please share your thoughts about the project.</p>
-        <form id="testimonial-form">
-            <input type="hidden" id="testimonial-project-id" name="projectId">
-
-            <label for="author-name">Name:</label>
-            <input type="text" id="author-name" name="authorName" required>
-
-            <label for="testimonial-content">Review:</label>
-            <textarea id="testimonial-content" name="content" rows="4" required></textarea>
-
-            <button type="submit">Submit</button>
-            <button type="button" id="close-modal">Cancel</button>
-        </form>
-    </div>
-</div>
 
 @section Scripts {
     <script src="~/js/accessibility.js"></script>
