@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchProjects();
     setupFilterListeners();
     setupTestimonials();
-    setupContactForm();
 });
 
 // Fetch and display Skills
