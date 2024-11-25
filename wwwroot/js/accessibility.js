@@ -282,5 +282,3 @@ function displayTestimonials(testimonials) {
         container.appendChild(testimonialDiv);
     });
 }
-
-}
