@@ -188,3 +188,26 @@ function displayTestimonials(testimonials) {
         container.appendChild(testimonialDiv);
     });
 }
+
+// Setup contact form
+function setupContactForm() {
+    const contactForm = document.getElementById('contact-form');
+
+    contactForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('contact-name').value.trim();
+        const email = document.getElementById('contact-email').value.trim();
+        const message = document.getElementById('contact-message').value.trim();
+
+        if (!name || !email || !message) {
+            alert('Please fill in all fields.');
+            return;
+        }
+
+        // Here, you can implement form submission logic, e.g., sending an email or storing the message.
+        // For demonstration, we'll just reset the form and show a thank-you message.
+
+        alert('Thank you for reaching out! I will get back to you shortly.');
+        contactForm.reset();
+    });
+}
