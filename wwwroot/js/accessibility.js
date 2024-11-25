@@ -30,29 +30,38 @@ function displaySkills(skills) {
     const container = document.getElementById('skills-container');
     container.innerHTML = ''; // Clear placeholder
 
-    if (skills.length === 0) {
+    if (!skills || skills.length === 0) {
         container.innerHTML = '<p>No skills available.</p>';
         return;
     }
 
     skills.forEach(skill => {
+        const skillId = skill.id || skill.skillId; // Adjusted property name
+        const skillName = skill.name || skill.skillName; // Adjusted property name
+
+        if (!skillId || !skillName) {
+            console.error('Invalid skill data:', skill);
+            return; // Skip this skill
+        }
+
         const div = document.createElement('div');
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.id = `skill-${skill.id}`;
+        checkbox.id = `skill-${skillId}`;
         checkbox.name = 'skills';
-        checkbox.value = skill.id; // Assuming 'id' is used for filtering
+        checkbox.value = skillId; // Use the correct ID field
         div.appendChild(checkbox);
 
         const label = document.createElement('label');
-        label.htmlFor = `skill-${skill.id}`;
-        label.textContent = skill.name;
+        label.htmlFor = `skill-${skillId}`;
+        label.textContent = skillName;
         div.appendChild(label);
 
         container.appendChild(div);
     });
 }
+
 
 // Fetch and display Categories
 async function fetchCategories() {
@@ -76,27 +85,53 @@ function displayCategories(categories) {
     const container = document.getElementById('categories-container');
     container.innerHTML = ''; // Clear placeholder
 
-    if (categories.length === 0) {
+    if (!categories || categories.length === 0) {
         container.innerHTML = '<p>No categories available.</p>';
         return;
     }
 
     categories.forEach(category => {
+        const categoryId = category.id || category.categoryId; // Adjusted property name
+        const categoryName = category.name || category.categoryName; // Adjusted property name
+
+        if (!categoryId || !categoryName) {
+            console.error('Invalid category data:', category);
+            return; // Skip this category
+        }
+
         const div = document.createElement('div');
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.id = `category-${category.id}`;
+        checkbox.id = `category-${categoryId}`;
         checkbox.name = 'categories';
-        checkbox.value = category.id; // Assuming 'id' is used for filtering
+        checkbox.value = categoryId;
         div.appendChild(checkbox);
 
         const label = document.createElement('label');
-        label.htmlFor = `category-${category.id}`;
-        label.textContent = category.name;
+        label.htmlFor = `category-${categoryId}`;
+        label.textContent = categoryName;
         div.appendChild(label);
 
         container.appendChild(div);
+    });
+}
+
+function setupFilterListeners() {
+    const applyButton = document.getElementById('apply-filters');
+    applyButton.addEventListener('click', () => {
+        const selectedSkills = Array.from(document.querySelectorAll('input[name="skills"]:checked'))
+            .map(input => input.value)
+            .filter(value => value !== undefined && value !== '');
+
+        const selectedCategories = Array.from(document.querySelectorAll('input[name="categories"]:checked'))
+            .map(input => input.value)
+            .filter(value => value !== undefined && value !== '');
+
+        console.log('Selected Skills:', selectedSkills);
+        console.log('Selected Categories:', selectedCategories);
+
+        fetchProjects({ skills: selectedSkills, categories: selectedCategories });
     });
 }
 
@@ -104,17 +139,29 @@ function displayCategories(categories) {
 async function fetchProjects(filters = {}) {
     try {
         let url = '/api/ProjectsAPI';
-        if (filters.skills || filters.categories) {
-            url += '/filter?';
-            const queryParams = [];
-            if (filters.skills && filters.skills.length > 0) {
-                filters.skills.forEach(skill => queryParams.push(`skillId=${encodeURIComponent(skill)}`));
-            }
-            if (filters.categories && filters.categories.length > 0) {
-                filters.categories.forEach(category => queryParams.push(`categoryId=${encodeURIComponent(category)}`));
-            }
-            url += queryParams.join('&');
+        const queryParams = [];
+
+        if (filters.skills && filters.skills.length > 0) {
+            filters.skills.forEach(skill => {
+                if (skill) {
+                    queryParams.push(`skillId=${encodeURIComponent(skill)}`);
+                }
+            });
         }
+
+        if (filters.categories && filters.categories.length > 0) {
+            filters.categories.forEach(category => {
+                if (category) {
+                    queryParams.push(`categoryId=${encodeURIComponent(category)}`);
+                }
+            });
+        }
+
+        if (queryParams.length > 0) {
+            url += '/filter?' + queryParams.join('&');
+        }
+
+        console.log('Fetching projects with URL:', url);
 
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Error fetching projects: ${response.statusText}`);
@@ -128,6 +175,7 @@ async function fetchProjects(filters = {}) {
         alert('Failed to load projects. Please try again later.');
     }
 }
+
 
 // Display projects in the DOM
 function displayProjects(projects) {
