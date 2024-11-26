@@ -36,7 +36,8 @@ namespace ProjectPortfolio.Controllers
                         p.Title,
                         p.Description,
                         p.ProjectUrl,
-                        p.ImageUrl
+                        p.ImageUrl,
+                        DateCreated = p.DateCreated.ToUniversalTime()
                     })
                     .ToListAsync();
                 return Ok(projects);
@@ -80,7 +81,15 @@ namespace ProjectPortfolio.Controllers
                     return NotFound();
                 }
 
-                return Ok(project);
+                return Ok(new
+                {
+                    project.ProjectId,
+                    project.Title,
+                    project.Description,
+                    project.ProjectUrl,
+                    project.ImageUrl,
+                    DateCreated = project.DateCreated.ToUniversalTime() // Ensure UTC in the response
+                });
             }
             catch (Exception ex)
             {
@@ -98,7 +107,7 @@ namespace ProjectPortfolio.Controllers
                 _logger.LogWarning("CreateProject: Invalid model state.");
                 return BadRequest(ModelState);
             }
-
+            project.DateCreated = DateTime.SpecifyKind(project.DateCreated, DateTimeKind.Utc);
             if (image != null)
             {
                 var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads");
