@@ -193,10 +193,13 @@ function displayProjects(projects) {
         card.setAttribute('role', 'listitem');
 
         // Image
-        const img = document.createElement('img');
-        img.src = project.imageUrl || 'placeholder.jpg'; // Use a placeholder if no image
-        img.alt = project.title;
-        card.appendChild(img);
+        if (project.imagePath) {
+            const img = document.createElement('img');
+            img.src = project.imagePath; // Use the project's image path
+            img.alt = `Image of project: ${project.title}`;
+            img.classList.add('project-image'); // Add a class for styling if needed
+            card.appendChild(img);
+        }
 
         // Title
         const title = document.createElement('h3');
@@ -223,6 +226,7 @@ function displayProjects(projects) {
         container.appendChild(card);
     });
 }
+
 
 // Setup filter listeners
 function setupFilterListeners() {
