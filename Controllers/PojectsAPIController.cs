@@ -153,7 +153,15 @@ namespace ProjectPortfolio.Controllers
                 existingProject.Title = project.Title;
                 existingProject.Description = project.Description;
                 existingProject.ProjectUrl = project.ProjectUrl;
-                existingProject.DateCreated = project.DateCreated;
+                // Convert DateCreated to UTC
+                if (project.DateCreated.Kind == DateTimeKind.Unspecified)
+                {
+                    existingProject.DateCreated = DateTime.SpecifyKind(project.DateCreated, DateTimeKind.Utc);
+                }
+                else
+                {
+                    existingProject.DateCreated = project.DateCreated.ToUniversalTime();
+                }
 
                 // Handle new image upload
                 if (image != null)
