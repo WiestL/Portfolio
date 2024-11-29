@@ -8,4 +8,6 @@
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
       - key: PORT
-        value: 10000
+        value: 5000
+      - key: CONNECTION_STRING
+        value: "Host=dpg-ct0bk4ogph6c73a8h62g-a;Database=portfoliodatabase_v3ik;Username=portfoliodatabase_v3ik_user;Password=xaoC33cUvdNc7wr59qFpokaZZTocYAD8;SSL Mode=Require;Trust Server Certificate=true;"
