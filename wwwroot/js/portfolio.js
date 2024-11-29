@@ -122,8 +122,9 @@ function makeGround() {
     scene.add(ground);
 
     // Tile grassModel2 over the ground
-    tileGrass(grassModel2, groundSize);
-    scatterGrass(grassModel1, 100);
+    //tileGrass(grassModel2, groundSize);
+    scatterGrass(grassModel1, 150);
+    scatterGrass(grassModel2, 300);
 }
 
 function tileGrass(model, groundSize) {
