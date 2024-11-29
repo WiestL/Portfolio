@@ -35,7 +35,9 @@ namespace ProjectPortfolio.Controllers
                         p.ProjectId,
                         p.Title,
                         p.Description,
-                        p.ProjectUrl
+                        p.ProjectUrl,
+                        p.ImageUrl,
+                        DateCreated = p.DateCreated.ToUniversalTime()
                     })
                     .ToListAsync();
                 return Ok(projects);
@@ -79,7 +81,15 @@ namespace ProjectPortfolio.Controllers
                     return NotFound();
                 }
 
-                return Ok(project);
+                return Ok(new
+                {
+                    project.ProjectId,
+                    project.Title,
+                    project.Description,
+                    project.ProjectUrl,
+                    project.ImageUrl,
+                    DateCreated = project.DateCreated.ToUniversalTime() // Ensure UTC in the response
+                });
             }
             catch (Exception ex)
             {
@@ -90,12 +100,28 @@ namespace ProjectPortfolio.Controllers
 
         // POST: api/Projects
         [HttpPost]
-        public async Task<IActionResult> CreateProject([FromBody] Project project)
+        public async Task<IActionResult> CreateProject([FromForm] Project project, [FromForm] IFormFile? image)
         {
             if (!ModelState.IsValid)
             {
                 _logger.LogWarning("CreateProject: Invalid model state.");
                 return BadRequest(ModelState);
+            }
+            project.DateCreated = DateTime.SpecifyKind(project.DateCreated, DateTimeKind.Utc);
+            if (image != null)
+            {
+                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads");
+                Directory.CreateDirectory(uploadsFolder); // Ensure the directory exists
+
+                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(image.FileName);
+                var filePath = Path.Combine(uploadsFolder, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await image.CopyToAsync(stream);
+                }
+
+                project.ImageUrl = $"/uploads/{fileName}"; // Store relative path for easy use in views
             }
 
             _context.Projects.Add(project);
@@ -115,7 +141,7 @@ namespace ProjectPortfolio.Controllers
 
         // PUT: api/Projects/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateProject(int id, [FromBody] Project project)
+        public async Task<IActionResult> UpdateProject(int id, [FromForm] Project project, [FromForm] IFormFile? image)
         {
             if (id != project.ProjectId || !ModelState.IsValid)
             {
@@ -123,11 +149,62 @@ namespace ProjectPortfolio.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(project).State = EntityState.Modified;
-
             try
             {
+                var existingProject = await _context.Projects.FindAsync(id);
+                if (existingProject == null)
+                {
+                    _logger.LogWarning("UpdateProject: Project with ID {ProjectId} not found for update.", id);
+                    return NotFound();
+                }
+
+                // Update project properties
+                existingProject.Title = project.Title;
+                existingProject.Description = project.Description;
+                existingProject.ProjectUrl = project.ProjectUrl;
+                // Convert DateCreated to UTC
+                if (project.DateCreated.Kind == DateTimeKind.Unspecified)
+                {
+                    existingProject.DateCreated = DateTime.SpecifyKind(project.DateCreated, DateTimeKind.Utc);
+                }
+                else
+                {
+                    existingProject.DateCreated = project.DateCreated.ToUniversalTime();
+                }
+
+                // Handle new image upload
+                if (image != null)
+                {
+                    // Define upload directory
+                    var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads");
+                    Directory.CreateDirectory(uploadsFolder); // Ensure the directory exists
+
+                    // Generate unique file name and save the file
+                    var fileName = Guid.NewGuid().ToString() + Path.GetExtension(image.FileName);
+                    var filePath = Path.Combine(uploadsFolder, fileName);
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await image.CopyToAsync(stream);
+                    }
+
+                    // Delete the old image if it exists
+                    if (!string.IsNullOrEmpty(existingProject.ImageUrl))
+                    {
+                        var oldImagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", existingProject.ImageUrl.TrimStart('/'));
+                        if (System.IO.File.Exists(oldImagePath))
+                        {
+                            System.IO.File.Delete(oldImagePath);
+                        }
+                    }
+
+                    // Update the image path
+                    existingProject.ImageUrl = $"/uploads/{fileName}";
+                }
+
+                _context.Entry(existingProject).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
+
                 _logger.LogInformation("UpdateProject: Project with ID {ProjectId} updated successfully.", id);
             }
             catch (DbUpdateConcurrencyException ex)
@@ -148,6 +225,7 @@ namespace ProjectPortfolio.Controllers
 
             return NoContent();
         }
+
 
         // GET: api/Projects/filter
         [HttpGet("filter")]

@@ -71,7 +71,7 @@ namespace ProjectPortfolio.Controllers
             {
                 // Ensure the date is set if it's not provided
                 project.DateCreated = project.DateCreated == default ? DateTime.Now : project.DateCreated;
-
+                project.DateCreated = DateTime.UtcNow;
                 // Save the main project first to get the generated ProjectId
                 _context.Projects.Add(project);
                 await _context.SaveChangesAsync();

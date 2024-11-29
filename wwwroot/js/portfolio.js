@@ -115,16 +115,39 @@ function setupScene() {
 
 function makeGround() {
     // Create the ground plane
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), groundMaterial);
+    const groundSize = 300;
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(groundSize, groundSize), groundMaterial);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.1;
     scene.add(ground);
 
-    // Scatter grass using preloaded models
-    scatterGrass(grassModel1, 50); // Adjust count as needed
-    scatterGrass(grassModel2, 50); // Adjust count as needed
+    // Tile grassModel2 over the ground
+    tileGrass(grassModel2, groundSize);
+    scatterGrass(grassModel1, 100);
 }
 
+function tileGrass(model, groundSize) {
+    // Get the bounding box of the model to determine tile size
+    const box = new THREE.Box3().setFromObject(model);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const tileSizeX = size.x;
+    const tileSizeZ = size.z;
+
+    const numTilesX = Math.ceil(groundSize / tileSizeX);
+    const numTilesZ = Math.ceil(groundSize / tileSizeZ);
+
+    for (let i = 0; i < numTilesX; i++) {
+        for (let j = 0; j < numTilesZ; j++) {
+            const grassClone = model.clone();
+            grassClone.position.x = -groundSize / 2 + i * tileSizeX + tileSizeX / 2;
+            grassClone.position.z = -groundSize / 2 + j * tileSizeZ + tileSizeZ / 2;
+            grassClone.position.y = 0.2;
+            grassClone.rotation.y = 0;
+            scene.add(grassClone);
+        }
+    }
+}
 function scatterGrass(model, count) {
     for (let i = 0; i < count; i++) {
         const grassClone = model.clone();
@@ -135,6 +158,7 @@ function scatterGrass(model, count) {
         scene.add(grassClone);
     }
 }
+
 
 function checkProximityToPedestals() {
     if (!character) return;
@@ -1532,13 +1556,15 @@ window.onload = function () {
     });
 
     // Load grass models
-    gltfLoader.load('/3DModels/grass.glb', (gltf) => {
+    gltfLoader.load('/3DModels/Grass.glb', (gltf) => {
         grassModel1 = gltf.scene;
+        grassModel1.scale.set(2, 2, 2);
         console.log("Grass model 1 loaded:", grassModel1);
     });
 
-    gltfLoader.load('/3DModels/grass2.glb', (gltf) => {
+    gltfLoader.load('/3DModels/Grass2.glb', (gltf) => {
         grassModel2 = gltf.scene;
+        grassModel2.scale.set(2, 2, 2);
         console.log("Grass model 2 loaded:", grassModel2);
     });
 };

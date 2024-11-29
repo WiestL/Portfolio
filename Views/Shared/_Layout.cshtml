@@ -6,7 +6,9 @@
     <title>@ViewData["Title"] - PortfolioProject</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @RenderSection("Styles", required: false)
     <style>
+        /* Existing inline styles */
         .navbar {
             background-color: #333;
             padding: 1rem;
@@ -53,6 +55,9 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="" asp-action="Portfolio">Portfolio</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Accessibility" asp-action="Index">Accessible View</a>
                         </li>
                     </ul>
                 </div>

@@ -8,11 +8,17 @@ using ProjectPortfolio.Services;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+Console.WriteLine($"Active Connection String: {connectionString}");
 
-// Configure environment variables and logging
-builder.Configuration.AddEnvironmentVariables();
+// Add configuration from appsettings.json and environment variables
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddUserSecrets<Program>()
+    .AddEnvironmentVariables();
 
-// Add services to the container
+
+// Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 builder.Services.AddTransient<IEmailSender, DummyEmailSender>();
@@ -23,9 +29,11 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
 });
 
-// Read the connection string from environment variables or configuration
-var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING") ??
-                       builder.Configuration.GetConnectionString("DefaultConnection");
+// Configure Entity Framework with Render
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
+                      npgsqlOptions => npgsqlOptions.EnableRetryOnFailure()));
+
 
 if (string.IsNullOrEmpty(connectionString))
 {
@@ -109,6 +117,9 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseMiddleware<ProjectPortfolio.Services.DateTimeMiddleWare>();
+
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
