@@ -917,7 +917,7 @@ function createTextMeshes(font, project, pedestal) {
     const textMesh = new THREE.Mesh(textGeometry, textMaterial);
 
     // Position the text on the ground in front of the pedestal
-    textMesh.position.set(pedestal.position.x - 3, 0, pedestal.position.z - 0.2);
+    textMesh.position.set(pedestal.position.x - 3, 2, pedestal.position.z - 0.2);
     textMesh.rotation.set(0, Math.PI / 4, 0);
 
     // Add the text to the scene
@@ -935,7 +935,7 @@ function createTextMeshes(font, project, pedestal) {
     const descriptionMesh = new THREE.Mesh(descriptionGeometry, descriptionMaterial);
 
     // Position the description below the title
-    descriptionMesh.position.set(pedestal.position.x - 4, 0.7, pedestal.position.z - 0.2);
+    descriptionMesh.position.set(pedestal.position.x - 4, 4.7, pedestal.position.z - 0.2);
     descriptionMesh.rotation.set(0, Math.PI / 4, 0);
 
     // Add the description to the scene
