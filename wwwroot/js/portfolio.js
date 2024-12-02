@@ -5,7 +5,7 @@ let controlSignModel; // Reference to the loaded control sign model
 let controlSign; // Instance of the control sign added to the scene
 let grassModel1, grassModel2; // References to the loaded grass models
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-const moveSpeed = 5;  // Character movement speed
+const moveSpeed = 7;  // Character movement speed
 let raycaster;
 let inTestimonialMode = false;  // Track whether user is in testimonial mode
 let intersectedPedestal = null;  // Track the current pedestal in proximity
@@ -22,9 +22,9 @@ let testimonialMeshes = []; // Array to store testimonial meshes
 let addTestimonialBox; // Reference to the testimonial box
 
 // Variables for materials
-const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
-const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x89CFF0 });
-const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x30ab2a });
+const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x62afa3 });
+const floorMaterial = new THREE.MeshLambertMaterial({ color: 0xb2feff });
+const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x67e571 });
 
 // New variables for proximity detection
 let proximitySpheres = []; // Array to store proximity spheres for each pedestal
@@ -121,33 +121,11 @@ function makeGround() {
     ground.position.y = -0.1;
     scene.add(ground);
 
-    // Tile grassModel2 over the ground
-    tileGrass(grassModel2, groundSize);
-    scatterGrass(grassModel1, 100);
+
+    scatterGrass(grassModel1, 200);
+    scatterGrass(grassModel2, 600);
 }
 
-function tileGrass(model, groundSize) {
-    // Get the bounding box of the model to determine tile size
-    const box = new THREE.Box3().setFromObject(model);
-    const size = new THREE.Vector3();
-    box.getSize(size);
-    const tileSizeX = size.x;
-    const tileSizeZ = size.z;
-
-    const numTilesX = Math.ceil(groundSize / tileSizeX);
-    const numTilesZ = Math.ceil(groundSize / tileSizeZ);
-
-    for (let i = 0; i < numTilesX; i++) {
-        for (let j = 0; j < numTilesZ; j++) {
-            const grassClone = model.clone();
-            grassClone.position.x = -groundSize / 2 + i * tileSizeX + tileSizeX / 2;
-            grassClone.position.z = -groundSize / 2 + j * tileSizeZ + tileSizeZ / 2;
-            grassClone.position.y = 0.2;
-            grassClone.rotation.y = 0;
-            scene.add(grassClone);
-        }
-    }
-}
 function scatterGrass(model, count) {
     for (let i = 0; i < count; i++) {
         const grassClone = model.clone();
@@ -1558,13 +1536,13 @@ window.onload = function () {
     // Load grass models
     gltfLoader.load('/3DModels/Grass.glb', (gltf) => {
         grassModel1 = gltf.scene;
-        grassModel1.scale.set(2, 2, 2);
+        grassModel1.scale.set(3, 3, 3);
         console.log("Grass model 1 loaded:", grassModel1);
     });
 
     gltfLoader.load('/3DModels/Grass2.glb', (gltf) => {
         grassModel2 = gltf.scene;
-        grassModel2.scale.set(2, 2, 2);
+        grassModel2.scale.set(4, 4, 4);
         console.log("Grass model 2 loaded:", grassModel2);
     });
 };
