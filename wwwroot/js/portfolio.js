@@ -935,7 +935,7 @@ function createTextMeshes(font, project, pedestal) {
     const descriptionMesh = new THREE.Mesh(descriptionGeometry, descriptionMaterial);
 
     // Position the description below the title
-    descriptionMesh.position.set(pedestal.position.x - 4, 4.7, pedestal.position.z - 0.2);
+    descriptionMesh.position.set(pedestal.position.x - 4, 3.7, pedestal.position.z - 0.2);
     descriptionMesh.rotation.set(0, Math.PI / 4, 0);
 
     // Add the description to the scene
