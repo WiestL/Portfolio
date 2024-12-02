@@ -887,14 +887,26 @@ function createProjectInfoOnGround(project, pedestal) {
     }
 }
 
+function wrapText(text, maxWordsPerLine) {
+    const words = text.split(' ');
+    const lines = [];
+    for (let i = 0; i < words.length; i += maxWordsPerLine) {
+        lines.push(words.slice(i, i + maxWordsPerLine).join(' '));
+    }
+    return lines.join('\n');
+}
+
 function createTextMeshes(font, project, pedestal) {
     if (!project || !project.title || !project.description) {
         console.error('Invalid project data:', project);
         return null;
     }
 
+    const wrappedTitle = wrapText(project.title, 9);
+    const wrappedDescription = wrapText(project.description, 9);
+
     // Create 3D text for the project title
-    const textGeometry = new THREE.TextGeometry(project.title, {
+    const textGeometry = new THREE.TextGeometry(wrappedTitle, {
         font: font,
         size: 0.4,
         height: 0.01,
@@ -912,7 +924,7 @@ function createTextMeshes(font, project, pedestal) {
     scene.add(textMesh);
 
     // Create 3D text for the project description
-    const descriptionGeometry = new THREE.TextGeometry(project.description, {
+    const descriptionGeometry = new THREE.TextGeometry(wrappedDescription, {
         font: font,
         size: 0.3,
         height: 0.01,
@@ -935,6 +947,7 @@ function createTextMeshes(font, project, pedestal) {
     // Return the meshes so we can remove them later
     return [textMesh, descriptionMesh];
 }
+
 
 // Handle interactions when the 'Enter' key is pressed
 function handleInteraction() {
