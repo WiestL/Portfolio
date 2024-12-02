@@ -161,6 +161,16 @@ namespace ProjectPortfolio.Controllers
                     return NotFound();
                 }
 
+                // Ensure DateCreated is in UTC
+                if (project.DateCreated.Kind == DateTimeKind.Unspecified)
+                {
+                    project.DateCreated = DateTime.SpecifyKind(project.DateCreated, DateTimeKind.Utc);
+                }
+                else if (project.DateCreated.Kind == DateTimeKind.Local)
+                {
+                    project.DateCreated = project.DateCreated.ToUniversalTime();
+                }
+
                 // Update project properties
                 existingProject.Title = project.Title;
                 existingProject.Description = project.Description;
@@ -196,8 +206,15 @@ namespace ProjectPortfolio.Controllers
                     }
                 }
 
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", "An error occurred while updating the project. Please try again.");
+                }
             }
 
             // Reload skills and categories if model state is invalid
@@ -208,6 +225,7 @@ namespace ProjectPortfolio.Controllers
 
             return View(project);
         }
+
 
         // GET: Projects/Delete/5
         public async Task<IActionResult> Delete(int? id)
