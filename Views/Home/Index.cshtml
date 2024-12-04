@@ -16,7 +16,6 @@
         <a asp-controller="Home" asp-action="Portfolio">here</a> to go to the portfolio.
     </p>
 
-
     <!-- Action Buttons Section -->
     <div class="mt-4">
         @if (SignInManager.IsSignedIn(User))
@@ -38,13 +37,15 @@
     @if (User.IsInRole("Admin"))
     {
         <div class="mt-4">
-            <!-- Edit Projects Button: Visible only to Admins -->
+            <!-- Access Admin Dashboard Button: Visible only to Admins -->
+            <a asp-controller="Admin" asp-action="Dashboard" class="btn btn-info btn-lg me-2">Admin Dashboard</a>
+            <!-- Edit Projects Button -->
             <a asp-controller="Projects" asp-action="Index" class="btn btn-warning btn-lg me-2">Edit Projects</a>
-            <!-- Edit Testimonials Button: Visible only to Admins -->
+            <!-- Edit Testimonials Button -->
             <a asp-controller="Testimonials" asp-action="Index" class="btn btn-warning btn-lg me-2">Edit Testimonials</a>
-            <!-- Edit Skills Button: Visible only to Admins -->
+            <!-- Edit Skills Button -->
             <a asp-controller="Skills" asp-action="Index" class="btn btn-warning btn-lg me-2">Edit Skills</a>
-            <!-- Edit Categories Button: Visible only to Admins -->
+            <!-- Edit Categories Button -->
             <a asp-controller="Categories" asp-action="Index" class="btn btn-warning btn-lg">Edit Categories</a>
         </div>
     }
@@ -54,3 +55,4 @@
         <p>Learn about <a href="https://learn.microsoft.com/aspnet/core" target="_blank">building Web apps with ASP.NET Core</a>.</p>
     </div>
 </div>
+
